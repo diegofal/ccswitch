@@ -10,7 +10,7 @@ The system Go is 1.25.6; put the 1.26 toolchain first on PATH before any `go` or
 
     export PATH="/c/Users/User/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.10.windows-amd64/bin:$PATH"
 
-`task ci` = fmt check, vet, golangci-lint, tests with coverage gates (domain + core ≥ 85 %), the architecture
+`task ci` = fmt check, vet, golangci-lint, tests with coverage gates (domain ≥ 90 %, core and adapters ≥ 85 %), the architecture
 test, and the build. Run the full Go suite before every commit.
 
 ## Hard rules

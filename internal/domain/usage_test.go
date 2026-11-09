@@ -168,7 +168,7 @@ func TestReached(t *testing.T) {
 		{"under", []domain.Limit{lim("a", 99.9, true, t0)}, false},
 		{"at 100", []domain.Limit{lim("a", 100, true, t0)}, true},
 		{"inactive at 100", []domain.Limit{lim("a", 100, false, t0)}, false},
-		{"severity not normal", []domain.Limit{warn}, true},
+		{"severity not normal, under 100", []domain.Limit{warn}, false},
 		{"inactive severity", []domain.Limit{inactiveWarn}, false},
 	}
 	for _, c := range cases {

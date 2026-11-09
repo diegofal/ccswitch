@@ -65,10 +65,12 @@ D5. **Claude Code's JSON is opaque.** The vault stores `claudeAiOauth`, `organiz
     refreshTokenExpiresAt, emailAddress, organizationName, planDisplayName. New fields pass through.
 D6. **Limits are generic.** Every `limits[]` row with `is_active` is shown, labelled by `group` and scope
     display name; nothing is hard-coded to "5 hour" or "weekly". Binding percent of an account = max percent
-    over its active rows. A read older than 3 poll intervals is *stale*: shown grey "as of HH:MM", never a
-    switch target. A failed read is *unreadable*: red row, red tray badge.
-D7. **Alerts** at 80 % and 95 % per limit row, plus "limit reached" (percent ≥ 100 or severity ≠ normal),
-    each fired once per (account, kind, resets_at, threshold). Also "X is available again" when a row that
+    over its active rows. A read older than 3 × the inactive poll interval is *stale*: shown grey "as of
+    HH:MM", never a switch target. Before deciding a switch, core re-reads every candidate's usage, so the
+    decision never rests on a 15-minute-old number. A failed read is *unreadable*: red row, red tray badge.
+D7. **Alerts** at 80 % and 95 % per limit row, plus "limit reached" (percent ≥ 100; the endpoint's severity
+    says "warning" from ~78 % so it is displayed, never read as reached), each fired once per (account,
+    kind+scope, resets_at to the minute, threshold). Also "X is available again" when a row that
     was ≥ 95 % drops below 50 % (reset).
 D8. **Auto-switch** off by default, toggle in the tray and `ccswitch auto on|off`. Threshold 95 % (setting).
     Rule, a pure function: if the active account's binding percent ≥ threshold, switch to the account in the
@@ -143,7 +145,7 @@ Update: `claude update` through execx (no console window), log output → `claud
 
 ```
 ● ana@example.com · Max 20x                   active
-    weekly   ▓░░░░░░░░░   1 %   resets Fri 14 Nov 18:00
+    weekly   ▓░░░░░░░░░   1 %   resets Sat 14 Nov 18:00
   personal@…  · Pro
     session  ▓▓▓▓▓▓▓▓░░  78 %   resets 13:00
     weekly   ▓▓▓▓░░░░░░  41 %   resets Thu
@@ -167,7 +169,7 @@ Reads state.json only. Snippet for `~/.claude/settings.json` in README.
 
 ## 5. TDD plan
 
-Red first in every work package; `task ci` (fmt, vet, golangci-lint, tests with coverage gate ≥ 85 % on
+Red first in every work package; `task ci` (fmt, vet, golangci-lint, tests with coverage gates: ≥ 90 % on domain, ≥ 85 % on
 domain and core, arch test, build) must pass before merge. Tests never touch `~/.claude` or the real vault
 (the env overrides above; the arch test fails any `os.UserHomeDir` call outside `internal/adapters/paths`).
 

@@ -84,11 +84,14 @@ func TestAlertsMessages(t *testing.T) {
 		{"scoped, reset in days", usage(), usage(weekly), []domain.Alert{
 			{Key: "a@x|weekly_scoped:Opus|2026-11-13T18:00:00Z|80", Email: "a@x", Kind: "weekly_scoped", Threshold: 80, Message: "a@x: weekly (Opus) limit at 82.5 % (resets Fri 15:00)"},
 		}},
-		{"reached by severity", usage(), func() domain.Usage {
+		{"severity alone is not reached", usage(), func() domain.Usage {
 			l := session(40)
 			l.Severity = "blocked"
 			return usage(l)
-		}(), []domain.Alert{
+		}(), nil},
+		{"reached at 100", usage(), usage(session(100)), []domain.Alert{
+			{Key: sessionKey + "80", Email: "a@x", Kind: "session_all", Threshold: 80, Message: "a@x: session limit at 100 % (resets 11:00)"},
+			{Key: sessionKey + "95", Email: "a@x", Kind: "session_all", Threshold: 95, Message: "a@x: session limit at 100 % (resets 11:00)"},
 			{Key: sessionKey + "100", Email: "a@x", Kind: "session_all", Threshold: 100, Message: "a@x: session limit reached (resets 11:00)"},
 		}},
 		{"available again", usage(session(100)), usage(session(0)), []domain.Alert{
@@ -125,10 +128,9 @@ func TestAlertsOnTheSessionWarningFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Severity "warning" counts as reached (PLAN D7: severity != normal).
-	got := keys(domain.Alerts("a@x", domain.Usage{}, cur, thresholds, nil))
-	want := []string{sessionKey + "100"}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("keys = %v, want %v", got, want)
+	// 78 % with severity "warning": under every threshold, and severity alone
+	// never means reached.
+	if got := keys(domain.Alerts("a@x", domain.Usage{}, cur, thresholds, nil)); len(got) != 0 {
+		t.Errorf("keys = %v, want none", got)
 	}
 }

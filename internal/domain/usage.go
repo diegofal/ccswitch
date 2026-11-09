@@ -126,10 +126,11 @@ func (u Usage) Fresh(now time.Time, maxAge time.Duration) bool {
 	return u.Err == "" && !u.ReadAt.IsZero() && now.Sub(u.ReadAt) <= maxAge
 }
 
-// reached reports whether a limit is used up: 100 % or a severity the
-// endpoint does not call normal.
+// reached reports whether a limit is used up. Only the percent counts: the
+// endpoint's severity turns to "warning" well before 100 % (seen at 78 %),
+// so it is shown but never read as "reached".
 func (l Limit) reached() bool {
-	return l.Percent >= 100 || l.Severity != "normal"
+	return l.Percent >= 100
 }
 
 // Reached reports whether any active limit is reached.
