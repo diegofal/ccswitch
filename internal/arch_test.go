@@ -38,7 +38,7 @@ var layers = []layer{
 	{name: "core", match: under("internal/core"), internal: []string{"internal/domain", "internal/ports", "internal/core"}},
 	{name: "adapters", match: under("internal/adapters"), internal: []string{"internal/domain", "internal/ports", "internal/adapters"}, external: []string{"*"}},
 	{name: "front ends", match: under("internal/cli", "internal/tray"), internal: []string{"internal/domain", "internal/core", "internal/cli", "internal/tray"}, external: []string{"*"}},
-	{name: "wiring", match: under("cmd"), internal: []string{""}, external: []string{"*"}},
+	{name: "wiring", match: under("cmd", "internal/wiring"), internal: []string{""}, external: []string{"*"}},
 	{name: "arch test", match: func(rel string) bool { return rel == "internal" }},
 }
 

@@ -147,7 +147,9 @@ also the Keychain item `ccswitch-accounts`). Claude Code keeps whichever account
 
 ## How it is built
 
-Go 1.26 + Wails v3, one core and three front ends that hold no logic. Design, facts and decisions:
+Go 1.26 + Wails v3, one core and three front ends that hold no logic. Two programs share that core
+(`internal/wiring`): `ccswitch`, a console program for the CLI and status line, and `ccswitch-app`, the tray,
+built windowed on Windows so it opens no console at login. Design, facts and decisions:
 [PLAN.md](PLAN.md). Rules for contributors (and for Claude Code working on it): [CLAUDE.md](CLAUDE.md).
 The real-login checklist: [TRY-IT.md](TRY-IT.md). `go run -ldflags "-H windowsgui" scripts/traydemo.go` runs
 the real tray on made-up accounts (no login, no network), for screenshots and UI work. `task ci` runs what CI runs (format, vet, lint, tests with

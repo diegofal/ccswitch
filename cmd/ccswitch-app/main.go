@@ -1,7 +1,7 @@
-// Command ccswitch-app is the tray app: the real adapters wired into the
-// core and the tray shell. Every folder comes from internal/adapters/paths,
-// so CCSWITCH_DATA_DIR, CCSWITCH_CLAUDE_DIR and CCSWITCH_CLAUDE_BIN redirect
-// it to a test copy.
+// Command ccswitch-app is the tray: the core built by internal/wiring, drawn
+// by internal/tray/shell. A separate program from the CLI (cmd/ccswitch)
+// because on Windows it is built windowed (-H windowsgui), so starting it at
+// login opens no console, and a windowed program cannot print to a terminal.
 package main
 
 import (
@@ -14,20 +14,12 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/diegofal/ccswitch/internal/adapters/claudecli"
 	"github.com/diegofal/ccswitch/internal/adapters/execx"
 	"github.com/diegofal/ccswitch/internal/adapters/lock"
-	"github.com/diegofal/ccswitch/internal/adapters/logfile"
-	"github.com/diegofal/ccswitch/internal/adapters/login"
 	"github.com/diegofal/ccswitch/internal/adapters/notify"
-	"github.com/diegofal/ccswitch/internal/adapters/npmreg"
 	"github.com/diegofal/ccswitch/internal/adapters/paths"
-	"github.com/diegofal/ccswitch/internal/adapters/statefile"
-	"github.com/diegofal/ccswitch/internal/adapters/usageapi"
-	"github.com/diegofal/ccswitch/internal/adapters/vault"
-	"github.com/diegofal/ccswitch/internal/core"
-	"github.com/diegofal/ccswitch/internal/ports"
 	"github.com/diegofal/ccswitch/internal/tray/shell"
+	"github.com/diegofal/ccswitch/internal/wiring"
 )
 
 // version is set at build time: -ldflags "-X main.version=…".
@@ -50,16 +42,8 @@ func main() {
 	}
 }
 
-type clock struct{}
-
-func (clock) Now() time.Time { return time.Now() }
-
 func run(ctx context.Context) error {
 	dataDir, err := paths.DataDir()
-	if err != nil {
-		return err
-	}
-	claudeDir, err := paths.ClaudeDir()
 	if err != nil {
 		return err
 	}
@@ -68,50 +52,27 @@ func run(ctx context.Context) error {
 		return err
 	}
 	defer release()
-	log := logfile.New(dataDir)
-	v, err := vault.Open(dataDir)
-	if err != nil {
-		return fmt.Errorf("open the vault: %w", err)
-	}
 	cliPath, err := beside("ccswitch")
 	if err != nil {
 		return err
 	}
-	liveLogin := login.Open(claudeDir, paths.ClaudeConfigFileBeside(claudeDir))
 	notifier := shell.NewNotifier()
-	sw := core.New(core.Deps{
-		Login:    liveLogin,
-		Vault:    v,
-		Usage:    usageapi.New(version, clock{}),
-		Claude:   claudecli.New(),
-		Releases: npmreg.New("", version),
-		Notify:   notifier,
-		Clock:    clock{},
-		Lock:     lock.New(filepath.Join(dataDir, "ccswitch.lock")),
-		Store:    statefile.New(dataDir),
-		Log:      log,
-		ScratchDir: func() (string, error) {
-			if err := os.MkdirAll(dataDir, 0o700); err != nil {
-				return "", err
-			}
-			return os.MkdirTemp(dataDir, "login-")
-		},
-		LoginStoreAt: func(dir string) ports.LoginStore {
-			return login.Open(dir, paths.ClaudeConfigFile(dir))
-		},
-	})
-	log.Printf("tray %s started; data %s, claude %s", version, dataDir, claudeDir)
+	w, err := wiring.New(version, notifier)
+	if err != nil {
+		return err
+	}
+	w.Log.Printf("tray %s started; data %s, claude %s", version, w.DataDir, w.ClaudeDir)
 	err = shell.Run(ctx, shell.Options{
-		Switcher:     sw,
+		Switcher:     w.Switcher,
 		Notifier:     notifier,
-		LoginModTime: liveLogin.ModTime,
+		LoginModTime: w.Live.ModTime,
 		Start:        start,
 		CLIPath:      cliPath,
-		LogPath:      log.Path(),
-		Logf:         log.Printf,
+		LogPath:      w.Log.Path(),
+		Logf:         w.Log.Printf,
 		Version:      version,
 	})
-	return errors.Join(err, log.Err())
+	return errors.Join(err, w.Log.Err())
 }
 
 // single holds app.lock while the tray runs, so a second copy exits instead

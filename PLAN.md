@@ -104,6 +104,7 @@ history and MCP logins); a details window in v1 (menu rows with bars carry the s
 cmd/ccswitch/          CLI: status | use <acct> | add | remove | auto on|off | pool <acct> on|off
                             | update | watch | statusline
 cmd/ccswitch-app/      Tray (Wails v3 systray + notifications service + autostart)
+internal/wiring/       the core on the real adapters, built once for both programs
 internal/domain/       Account, Usage, Limit, PatchCredentials, PatchConfig, Binding, Decide, Alerts,
                        CompareVersion. Pure: no IO, no time.Now (clock passed in).
 internal/ports/        LoginStore, Vault, UsageAPI, Claude, Releases, Notifier, Clock, Lock
@@ -114,6 +115,11 @@ internal/core/         Switcher: Capture, Snapshot, Switch, Undo, Poll, Alert, A
 internal/testkit/      fakes for every port, fixture loaders
 internal/arch_test.go  front ends import only core + domain; domain imports nothing internal
 ```
+
+Two programs, not one, because of Windows: a program is either a console one or a windowed one. The CLI
+must be a console program so `status` and `statusline` print to the terminal (and it skips Wails, so it
+starts faster); the tray is built windowed (`-H windowsgui`) so starting it at login opens no console.
+Both get the same core from `internal/wiring`.
 
 App data: `%APPDATA%/ccswitch` · `~/Library/Application Support/ccswitch` · `~/.local/share/ccswitch`:
 `accounts.json` (vault), `settings.json` (threshold, auto, poll intervals), `state.json` (last usage per
