@@ -4,6 +4,7 @@ package ports
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/diegofal/ccswitch/internal/domain"
@@ -22,6 +23,12 @@ type Vault interface {
 	Load() ([]domain.Account, error)
 	Save([]domain.Account) error
 }
+
+// ErrUnauthorized is what UsageAPI returns, wrapped, when the server refuses
+// the token (HTTP 401 or 403). The core then refreshes an inactive account
+// once, and marks an account whose refresh is refused as needing to be added
+// again. Adapters wrap it so errors.Is finds it.
+var ErrUnauthorized = errors.New("unauthorized")
 
 // UsageAPI is the usage endpoint and the token refresh (PLAN F3, F4).
 type UsageAPI interface {
