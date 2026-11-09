@@ -230,3 +230,8 @@ Lanes: WP-1 alone first. Then WP-2 ∥ WP-3. Then WP-4 ∥ WP-5 ∥ WP-7. WP-6 l
 ## 8. Status
 
 2026-11-09 08:30 — plan written; facts F1–F7 checked; nothing built.
+2026-11-09 10:30 — WP-1..5 and WP-7 built by six Opus lanes and merged (main aaca1b5): `task ci` green on
+Windows (domain 98 %, core 97 %, cli 97 %, tray model 99 %, adapters 87–100 %), bin/ccswitch.exe and
+bin/ccswitch-app.exe built. Run only against copies of the login so far: CLI `check` and the tray's first poll
+both read the real weekly usage and versions. WP-6 (TRY-IT.md: V1–V4, V6 with the maintainer's second account) is next;
+V5 needs a Mac. Not pushed; no GitHub repo yet.
