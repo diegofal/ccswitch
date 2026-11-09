@@ -215,3 +215,30 @@ func TestModTime(t *testing.T) {
 		t.Fatalf("ModTime %v, %v; want %v", got, err, when)
 	}
 }
+
+func TestConfigFilePatchWritesOnlyWhenCalled(t *testing.T) {
+	_, config := setup(t)
+	old := read(t, config)
+	c := loginfile.Config(config)
+	got, err := c.Read()
+	if err != nil || !bytes.Equal(got, old) {
+		t.Fatalf("Read: %v", err)
+	}
+	write, err := c.Patch(testkit.FakeLogin("new@example.com"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(read(t, config), old) {
+		t.Fatal("Patch wrote before its write was called")
+	}
+	if err := write(); err != nil {
+		t.Fatal(err)
+	}
+	checkUntouched(t, old, read(t, config), "oauthAccount")
+	if !strings.Contains(string(read(t, config)), "new@example.com") {
+		t.Fatal("the profile was not written")
+	}
+	if _, err := loginfile.Config(filepath.Join(t.TempDir(), "absent.json")).Patch(testkit.FakeLogin("x@example.com")); err == nil {
+		t.Fatal("Patch: want an error for a missing file")
+	}
+}
