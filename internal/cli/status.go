@@ -11,7 +11,8 @@ import (
 
 const barWidth = 10
 
-// writeStatus prints the state as a table:
+// writeStatus prints the state as a table, the active account first and
+// the others soonest usable first (domain.ByAvailability):
 //
 //   - ana@example.com · Max 20x
 //     weekly            ▓░░░░░░░░░    1%  resets Sat 18:00
@@ -26,8 +27,16 @@ func writeStatus(w *out, st domain.State, set domain.Settings, now time.Time, la
 	if len(st.Accounts) == 0 {
 		w.println("No accounts yet: `ccswitch check` captures the live login, `ccswitch add` adds another.")
 	}
+	var others []domain.AccountState
 	for _, a := range st.Accounts {
-		writeAccount(w, a, a.Email == st.Active, set, now)
+		if a.Email == st.Active {
+			writeAccount(w, a, true, set, now)
+		} else {
+			others = append(others, a)
+		}
+	}
+	for _, a := range domain.ByAvailability(others, set.ThresholdPercent, now) {
+		writeAccount(w, a, false, set, now)
 	}
 	w.println()
 	if set.Auto {
@@ -84,7 +93,7 @@ func writeAccount(w *out, a domain.AccountState, active bool, set domain.Setting
 	}
 	for _, l := range rows {
 		w.printf("    %-*s  %s %5s%%  resets %s%s\n", width, limitLabel(l),
-			domain.BarText(l.Percent, barWidth), domain.PercentText(l.Percent), domain.ResetText(l.ResetsAt, now), stale)
+			domain.BarText(l.Percent, barWidth), domain.PercentText(l.Percent), domain.ResetInText(l.ResetsAt, now), stale)
 	}
 }
 

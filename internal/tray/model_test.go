@@ -32,7 +32,7 @@ var (
 )
 
 // dump writes rows one per line: "---" separator, "[x] "/"[ ] " checkbox,
-// "> " action, "  " label; a disabled action or checkbox ends in " (off)",
+// "> " action, "  " label, "+ " label in full colour (then its picture); a disabled action or checkbox ends in " (off)",
 // and an action's argument follows "=>".
 func dump(rows []Row) string {
 	var b strings.Builder
@@ -41,7 +41,11 @@ func dump(rows []Row) string {
 		case Separator:
 			b.WriteString("---")
 		case Label:
-			b.WriteString("  " + r.Text)
+			lead := "  "
+			if r.Enabled {
+				lead = "+ "
+			}
+			b.WriteString(lead + markText(r.Mark) + r.Text)
 		case Action:
 			b.WriteString("> " + r.Text + " [" + r.Action)
 			if r.Arg != "" {
@@ -58,12 +62,23 @@ func dump(rows []Row) string {
 		if r.Kind != Separator && r.Kind != Label && !r.Enabled {
 			b.WriteString(" (off)")
 		}
-		if r.Kind == Label && r.Enabled {
-			b.WriteString(" (label enabled!)")
+		if r.Kind == Label && r.Action != "" {
+			b.WriteString(" (label with an action!)")
 		}
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+// markText is a row's picture as "(dot ok) " or "(ring ok 78) ".
+func markText(m Mark) string {
+	switch m.Shape {
+	case "":
+		return ""
+	case MarkRing:
+		return "(" + m.Shape + " " + m.Level + " " + domain.PercentText(m.Percent) + ") "
+	}
+	return "(" + m.Shape + " " + m.Level + ") "
 }
 
 func twoAccounts() domain.State {
@@ -82,11 +97,12 @@ func twoAccounts() domain.State {
 }
 
 func TestMenuModelFullMenu(t *testing.T) {
-	want := `  ● ana@example.com · Max 20x
-      weekly  ▓░░░░░░░░░  1 %  resets Sat 18:00
-  ○ personal@x.com · Pro
-      session  ▓▓▓▓▓▓▓▓░░  78 %  resets 13:00
-      weekly Opus  ▓▓▓▓░░░░░░  41.3 %  resets Sat 18:00
+	want := `+ (dot ok) ana@example.com · Max 20x · in use
++ (ring ok 1)     weekly  ▰▱▱▱▱▱▱▱▱▱  1 %  resets in 5d 6h · Sat 18:00
+---
++ (dot ok) personal@x.com · Pro
++ (ring ok 78)     session  ▰▰▰▰▰▰▰▰▱▱  78 %  resets in 1h 0m · 13:00
++ (ring ok 41.3)     weekly Opus  ▰▰▰▰▱▱▱▱▱▱  41.3 %  resets in 5d 6h · Sat 18:00
 >     Use this account [use personal@x.com]
 ---
 [ ] Auto-switch at 95 % [auto]
@@ -108,7 +124,7 @@ func TestMenuModelFullMenu(t *testing.T) {
 
 func TestMenuModelLimitRowsAreIndented(t *testing.T) {
 	for _, r := range MenuModel(twoAccounts(), domain.DefaultSettings(), t0, maxAge, UI{}) {
-		if strings.Contains(r.Text, "resets") && !strings.HasPrefix(r.Text, "    ") {
+		if strings.Contains(r.Text, "resets") && !strings.HasPrefix(r.Text, indent) {
 			t.Errorf("limit row %q is not indented under its account", r.Text)
 		}
 	}
@@ -144,6 +160,10 @@ func TestMenuModelAccounts(t *testing.T) {
 	outOfPool.Accounts[1].OrgName = "Example Co"
 	noPlan := twoAccounts()
 	noPlan.Accounts[1].Plan = ""
+	defaultOrg := twoAccounts()
+	defaultOrg.Accounts[1].OrgName = "personal@x.com's Organization"
+	noReset := twoAccounts()
+	noReset.Accounts[1].Usage = read(t0, limit("weekly", "", 3, time.Time{}))
 	activeUnreadable := twoAccounts()
 	activeUnreadable.Accounts[0].Usage = domain.Unreadable(nil, t0)
 
@@ -153,32 +173,31 @@ func TestMenuModelAccounts(t *testing.T) {
 		from string
 		want string
 	}{
-		{"stale rows say as of", stale, "○ personal", `  ○ personal@x.com · Pro
-      session  ▓▓▓▓▓▓▓▓░░  78 %  resets 13:00  (as of 11:14)
-      weekly Opus  ▓▓▓▓░░░░░░  41.3 %  resets Sat 18:00  (as of 11:14)
+		{"stale rows say as of, in grey", stale, "personal@x.com · Pro", `+ (dot stale) personal@x.com · Pro
++ (ring stale 78)     session  ▰▰▰▰▰▰▰▰▱▱  78 %  resets in 1h 0m · 13:00  (as of 11:14)
++ (ring stale 41.3)     weekly Opus  ▰▰▰▰▱▱▱▱▱▱  41.3 %  resets in 5d 6h · Sat 18:00  (as of 11:14)
 >     Use this account [use personal@x.com]
 `},
-		{"failed read is shown", unreadable, "○ personal", `  ○ personal@x.com · Pro
-      unreadable: usage: HTTP 500
+		{"failed read is shown", unreadable, "personal@x.com · Pro", `+ (dot unreadable) personal@x.com · Pro
++     unreadable: usage: HTTP 500
 >     Use this account [use personal@x.com]
 `},
-		{"never read", never, "○ personal", `  ○ personal@x.com · Pro
-      usage not read yet
+		{"never read", never, "personal@x.com · Pro", `+ (dot stale) personal@x.com · Pro
++     usage not read yet
 >     Use this account [use personal@x.com]
 `},
-		{"no active limit", noActive, "○ personal", `  ○ personal@x.com · Pro
-      no active limit
+		{"no active limit", noActive, "personal@x.com · Pro", `+ (dot ok) personal@x.com · Pro
++     no active limit
 >     Use this account [use personal@x.com]
 `},
-		{"out of pool, with org", outOfPool, "○ personal", `  ○ personal@x.com · Pro · Example Co · not in auto-switch
-      session  ▓▓▓▓▓▓▓▓░░  78 %  resets 13:00
-      weekly Opus  ▓▓▓▓░░░░░░  41.3 %  resets Sat 18:00
->     Use this account [use personal@x.com]
+		{"out of pool, with org", outOfPool, "personal@x.com · Pro", "+ (dot ok) personal@x.com · Pro · Example Co · not in auto-switch\n"},
+		{"default org name is not repeated", defaultOrg, "personal@x.com · Pro", "+ (dot ok) personal@x.com · Pro\n"},
+		{"no plan", noPlan, "personal@x.com", "+ (dot ok) personal@x.com\n"},
+		{"reset with no time", noReset, "personal@x.com · Pro", `+ (dot ok) personal@x.com · Pro
++ (ring ok 3)     weekly  ▰▱▱▱▱▱▱▱▱▱  3 %  resets —
 `},
-		{"no plan", noPlan, "○ personal", "  ○ personal@x.com\n"},
-		{"active unreadable", activeUnreadable, "● ana", `  ● ana@example.com · Max 20x
-      unreadable: usage unreadable
-  ○ personal@x.com · Pro
+		{"active unreadable", activeUnreadable, "ana@example.com", `+ (dot unreadable) ana@example.com · Max 20x · in use
++     unreadable: usage unreadable
 `},
 	}
 	for _, c := range cases {
@@ -206,7 +225,7 @@ func TestMenuModelLastErrorFirst(t *testing.T) {
 	st := twoAccounts()
 	st.LastError = "read the live login: open .credentials.json: no such file"
 	menu := dump(MenuModel(st, domain.DefaultSettings(), t0, maxAge, UI{}))
-	if !strings.HasPrefix(menu, "  ⚠ read the live login: open .credentials.json: no such file\n---\n  ● ana") {
+	if !strings.HasPrefix(menu, "  ⚠ read the live login: open .credentials.json: no such file\n---\n+ (dot ok) ana") {
 		t.Errorf("menu =\n%s", menu)
 	}
 }
@@ -247,9 +266,9 @@ func TestMenuModelVersion(t *testing.T) {
 	}{
 		{"update available", "2.1.300", "2.1.319", UI{}, "  Claude Code 2.1.300 · 2.1.319 available\n>     Update now [update]\n"},
 		{"updating", "2.1.300", "2.1.319", UI{Updating: true}, "  Claude Code 2.1.300 · 2.1.319 available\n>     Updating… [update] (off)\n"},
-		{"up to date", "2.1.319", "2.1.319", UI{}, "  Claude Code 2.1.319\n"},
-		{"newer than latest", "2.1.320", "2.1.319", UI{}, "  Claude Code 2.1.320\n"},
-		{"latest unknown", "2.1.300", "", UI{}, "  Claude Code 2.1.300\n"},
+		{"up to date", "2.1.319", "2.1.319", UI{}, "  Claude Code 2.1.319 · up to date\n"},
+		{"newer than latest", "2.1.320", "2.1.319", UI{}, "  Claude Code 2.1.320 · up to date\n"},
+		{"latest unknown", "2.1.300", "", UI{}, "  Claude Code 2.1.300 · latest version not read yet\n"},
 		{"installed unreadable", "", "2.1.319", UI{}, "  Claude Code version not read yet\n"},
 	}
 	for _, c := range cases {
@@ -353,7 +372,48 @@ func TestMenuModelActiveAccountFirst(t *testing.T) {
 	st := twoAccounts()
 	st.Active = "personal@x.com"
 	menu := dump(MenuModel(st, domain.DefaultSettings(), t0, maxAge, UI{}))
-	if !strings.HasPrefix(menu, "  ● personal@x.com · Pro\n") || !strings.Contains(menu, "  ○ ana@example.com · Max 20x\n") {
+	if !strings.HasPrefix(menu, "+ (dot ok) personal@x.com · Pro · in use\n") || !strings.Contains(menu, "---\n+ (dot ok) ana@example.com · Max 20x\n") {
 		t.Errorf("menu =\n%s", menu)
+	}
+}
+
+func TestMenuModelVersionSaysWhenChecked(t *testing.T) {
+	st := twoAccounts()
+	st.Installed, st.Latest, st.VersionReadAt = "2.1.321", "2.1.321", time.Date(2026, 11, 9, 21, 13, 0, 0, time.UTC)
+	got := section(t, dump(MenuModel(st, domain.DefaultSettings(), t0, maxAge, UI{})), "  Claude Code")
+	if want := "  Claude Code 2.1.321 · up to date (checked 18:13)\n"; got != want {
+		t.Errorf("version = %q, want %q", got, want)
+	}
+	st.Installed = "2.1.300"
+	got = section(t, dump(MenuModel(st, domain.DefaultSettings(), t0, maxAge, UI{})), "  Claude Code")
+	if want := "  Claude Code 2.1.300 · 2.1.321 available (checked 18:13)\n>     Update now [update]\n"; got != want {
+		t.Errorf("version = %q, want %q", got, want)
+	}
+}
+
+// The others come soonest usable first: under the threshold (lowest
+// percent first), then over it by reset time, then the unreadable.
+func TestMenuModelOthersBySoonestAvailable(t *testing.T) {
+	tue := time.Date(2026, 11, 10, 4, 0, 0, 0, time.UTC)
+	thu := time.Date(2026, 11, 12, 17, 59, 0, 0, time.UTC)
+	st := domain.State{
+		Active: "work@x.com",
+		Accounts: []domain.AccountState{
+			{Email: "work@x.com", InPool: true, Usage: read(t0, limit("weekly", "", 27, saturday))},
+			{Email: "broken@x.com", InPool: true, Usage: domain.Unreadable(nil, t0)},
+			{Email: "thu@x.com", InPool: true, Usage: read(t0, limit("weekly", "", 97, thu))},
+			{Email: "tue@x.com", InPool: true, Usage: read(t0, limit("weekly", "", 99, tue))},
+			{Email: "fresh@x.com", InPool: true, Usage: read(t0, limit("weekly", "", 12, saturday))},
+		},
+	}
+	var order []string
+	for _, r := range MenuModel(st, domain.DefaultSettings(), t0, maxAge, UI{}) {
+		if r.Mark.Shape == MarkDot {
+			order = append(order, strings.Fields(r.Text)[0])
+		}
+	}
+	want := []string{"work@x.com", "fresh@x.com", "tue@x.com", "thu@x.com", "broken@x.com"}
+	if strings.Join(order, " ") != strings.Join(want, " ") {
+		t.Errorf("order = %v, want %v", order, want)
 	}
 }

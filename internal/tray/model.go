@@ -33,7 +33,8 @@ const (
 	ActQuit      = "quit"
 )
 
-// Row is one menu row.
+// Row is one menu row. An enabled Label is drawn in full colour but does
+// nothing when clicked: account rows are, so they do not read as greyed out.
 type Row struct {
 	Kind    Kind
 	Text    string
@@ -41,7 +42,22 @@ type Row struct {
 	Checked bool
 	Action  string
 	Arg     string
+	Mark    Mark // the small picture left of the text, if any
 }
+
+// Mark is a row's picture (MarkPNG): an account's level as a dot, a
+// limit's percent as a ring like the tray icon's.
+type Mark struct {
+	Shape   string // MarkDot, MarkRing, or "" for none
+	Level   string
+	Percent float64 // MarkRing only
+}
+
+// Mark shapes.
+const (
+	MarkDot  = "dot"
+	MarkRing = "ring"
+)
 
 // UI is what the menu shows that is not in domain.State: the tray's own
 // running work and the autostart registration.
@@ -69,7 +85,8 @@ const (
 )
 
 // MenuModel is the tray menu for st (PLAN §4): the last error first, then
-// the active account and the others, each with its active limits, the
+// the active account and the others, the soonest usable again first
+// (domain.ByAvailability), each with its active limits, the
 // auto-switch and undo, adding an account, the Claude Code version, and
 // the app's own items.
 func MenuModel(st domain.State, set domain.Settings, now time.Time, maxAge time.Duration, ui UI) []Row {
@@ -80,13 +97,21 @@ func MenuModel(st domain.State, set domain.Settings, now time.Time, maxAge time.
 	if len(st.Accounts) == 0 {
 		rows = append(rows, label("No account yet"))
 	}
-	if a, ok := active(st); ok {
+	a, hasActive := active(st)
+	if hasActive {
 		rows = append(rows, accountRows(a, true, now, maxAge)...)
 	}
+	var others []domain.AccountState
 	for _, a := range st.Accounts {
 		if a.Email != st.Active {
-			rows = append(rows, accountRows(a, false, now, maxAge)...)
+			others = append(others, a)
 		}
+	}
+	if hasActive && len(others) > 0 {
+		rows = append(rows, sep())
+	}
+	for _, a := range domain.ByAvailability(others, set.ThresholdPercent, now) {
+		rows = append(rows, accountRows(a, false, now, maxAge)...)
 	}
 	rows = append(rows, sep(),
 		Row{Kind: Check, Text: "Auto-switch at " + domain.PercentText(set.ThresholdPercent) + " %", Enabled: true, Checked: set.Auto, Action: ActAuto})
@@ -100,50 +125,60 @@ func MenuModel(st domain.State, set domain.Settings, now time.Time, maxAge time.
 }
 
 func accountRows(a domain.AccountState, active bool, now time.Time, maxAge time.Duration) []Row {
-	head := "○ " + a.Email
-	if active {
-		head = "● " + a.Email
-	}
-	for _, s := range []string{a.Plan, a.OrgName} {
+	head := a.Email
+	for _, s := range []string{a.Plan, orgName(a)} {
 		if s != "" {
 			head += " · " + s
 		}
 	}
+	if active {
+		head += " · in use"
+	}
 	if !a.InPool {
 		head += " · not in auto-switch"
 	}
-	rows := []Row{label(head)}
-	for _, line := range usageLines(a.Usage, now, maxAge) {
-		rows = append(rows, label(indent+line))
-	}
+	percent, level := usageLevel(a.Usage, now, maxAge)
+	rows := []Row{bright(head, Mark{Shape: MarkDot, Level: level, Percent: percent})}
+	rows = append(rows, usageRows(a.Usage, now, maxAge)...)
 	if !active {
 		rows = append(rows, action(indent+"Use this account", ActUse, a.Email))
 	}
 	return rows
 }
 
-// usageLines are an account's usage rows: one per active limit, or the
+// orgName is the account's organisation, unless it is the default one
+// Anthropic names after the email, which would only repeat it.
+func orgName(a domain.AccountState) string {
+	if a.OrgName == a.Email+"'s Organization" {
+		return ""
+	}
+	return a.OrgName
+}
+
+// usageRows are an account's usage rows: one per active limit, or the
 // reason there is none. A stale read says when it was taken, so an old
 // number never passes for a current one.
-func usageLines(u domain.Usage, now time.Time, maxAge time.Duration) []string {
+func usageRows(u domain.Usage, now time.Time, maxAge time.Duration) []Row {
 	switch {
 	case u.Err != "":
-		return []string{"unreadable: " + u.Err}
+		return []Row{bright(indent+"unreadable: "+u.Err, Mark{})}
 	case u.ReadAt.IsZero():
-		return []string{"usage not read yet"}
+		return []Row{bright(indent+"usage not read yet", Mark{})}
 	}
+	fresh := u.Fresh(now, maxAge)
 	asOf := ""
-	if !u.Fresh(now, maxAge) {
+	if !fresh {
 		asOf = "  (as of " + clock(u.ReadAt) + ")"
 	}
-	var out []string
+	var out []Row
 	for _, l := range u.Limits {
 		if l.Active {
-			out = append(out, limitLabel(l)+"  "+domain.BarText(l.Percent, barWidth)+"  "+domain.PercentText(l.Percent)+" %  resets "+domain.ResetText(l.ResetsAt, now)+asOf)
+			text := indent + limitLabel(l) + "  " + domain.Bar(l.Percent, barWidth, "▰", "▱") + "  " + domain.PercentText(l.Percent) + " %  resets " + domain.ResetInText(l.ResetsAt, now) + asOf
+			out = append(out, bright(text, Mark{Shape: MarkRing, Level: levelOf(l.Percent, fresh), Percent: l.Percent}))
 		}
 	}
 	if len(out) == 0 {
-		return []string{"no active limit"}
+		return []Row{bright(indent+"no active limit", Mark{})}
 	}
 	return out
 }
@@ -152,14 +187,26 @@ func versionRows(st domain.State, ui UI) []Row {
 	if st.Installed == "" {
 		return []Row{label("Claude Code version not read yet")}
 	}
+	head := "Claude Code " + st.Installed
+	if st.Latest == "" {
+		return []Row{label(head + " · latest version not read yet")}
+	}
 	if c, err := domain.CompareVersion(st.Installed, st.Latest); err != nil || c >= 0 {
-		return []Row{label("Claude Code " + st.Installed)}
+		return []Row{label(head + " · up to date" + checked(st))}
 	}
 	update := action(indent+"Update now", ActUpdate, "")
 	if ui.Updating {
 		update.Text, update.Enabled = indent+"Updating…", false
 	}
-	return []Row{label("Claude Code " + st.Installed + " · " + st.Latest + " available"), update}
+	return []Row{label(head + " · " + st.Latest + " available" + checked(st)), update}
+}
+
+// checked is when the latest version was last looked up.
+func checked(st domain.State) string {
+	if st.VersionReadAt.IsZero() {
+		return ""
+	}
+	return " (checked " + clock(st.VersionReadAt) + ")"
 }
 
 func autostartRow(ui UI) Row {
@@ -180,22 +227,32 @@ func IconSpec(st domain.State, maxAge time.Duration, now time.Time) (percent flo
 		}
 		return 0, LevelStale
 	}
-	u := a.Usage
+	return usageLevel(a.Usage, now, maxAge)
+}
+
+// usageLevel is an account's binding percent and its level.
+func usageLevel(u domain.Usage, now time.Time, maxAge time.Duration) (float64, string) {
 	if u.Err != "" {
 		return 0, LevelUnreadable
 	}
 	b, found := u.Binding()
-	switch {
-	case !u.Fresh(now, maxAge):
-		return b.Percent, LevelStale
-	case !found:
-		return 0, LevelOK
-	case b.Percent >= alertAt:
-		return b.Percent, LevelAlert
-	case b.Percent >= warnAt:
-		return b.Percent, LevelWarn
+	if !found {
+		b.Percent = 0
 	}
-	return b.Percent, LevelOK
+	return b.Percent, levelOf(b.Percent, u.Fresh(now, maxAge))
+}
+
+// levelOf is a percent's level; any read that is not current is grey.
+func levelOf(percent float64, fresh bool) string {
+	switch {
+	case !fresh:
+		return LevelStale
+	case percent >= alertAt:
+		return LevelAlert
+	case percent >= warnAt:
+		return LevelWarn
+	}
+	return LevelOK
 }
 
 // TooltipText is the tray tooltip: the active account and its binding
@@ -253,6 +310,8 @@ func cut(s string, n int) string {
 }
 
 func label(text string) Row { return Row{Kind: Label, Text: text} }
+
+func bright(text string, m Mark) Row { return Row{Kind: Label, Text: text, Enabled: true, Mark: m} }
 
 func action(text, act, arg string) Row {
 	return Row{Kind: Action, Text: text, Enabled: true, Action: act, Arg: arg}

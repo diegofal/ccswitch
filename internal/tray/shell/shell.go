@@ -198,15 +198,18 @@ func (s *shell) add(r tray.Row) {
 	case tray.Separator:
 		s.menu.AddSeparator()
 		return
-	case tray.Label:
-		s.menu.Add(r.Text).SetEnabled(false)
-		return
 	case tray.Check:
 		item = s.menu.AddCheckbox(r.Text, r.Checked)
 	default:
 		item = s.menu.Add(r.Text)
 	}
-	item.SetEnabled(r.Enabled).OnClick(func(*application.Context) { go s.click(r) })
+	item.SetEnabled(r.Enabled)
+	if png := tray.MarkPNG(r.Mark); png != nil {
+		item.SetBitmap(png)
+	}
+	if r.Kind != tray.Label {
+		item.OnClick(func(*application.Context) { go s.click(r) })
+	}
 }
 
 // click runs a row's action. Every outcome is drawn: core errors through

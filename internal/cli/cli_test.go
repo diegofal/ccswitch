@@ -36,16 +36,16 @@ func TestStatusTable(t *testing.T) {
 	}
 	code, out, errOut := r.run("status")
 	want := `* a@x.com · Max 20x
-    weekly  ▓░░░░░░░░░     1%  resets Wed 09:00
+    weekly  ▓░░░░░░░░░     1%  resets in 2d 0h · Wed 09:00
+  e@v.com
+    no active limits
   b@y.com · Pro · not in the auto-switch pool
-    weekly         ▓▓▓▓▓▓▓▓▓░  99.6%  resets Wed 09:00  as of 07:00
-    weekly (Opus)  ▓▓▓▓▓▓▓▓▓▓   100%  resets 9 Dec  as of 07:00
+    weekly         ▓▓▓▓▓▓▓▓▓░  99.6%  resets in 2d 0h · Wed 09:00  as of 07:00
+    weekly (Opus)  ▓▓▓▓▓▓▓▓▓▓   100%  resets in 30d 0h · 9 Dec  as of 07:00
   c@z.com
     unreadable: login expired — add it again (tried 09:00)
   d@w.com
     usage not read yet
-  e@v.com
-    no active limits
 
 Auto-switch off (would switch at 95 %)
 Claude Code 2.1.300 · 2.1.319 available (` + "`ccswitch update`" + `)

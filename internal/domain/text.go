@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -23,7 +24,10 @@ func pct(p float64) string {
 // BarText draws percent as a bar of width cells ("▓▓▓▓░░░░░░"). Any use
 // shows at least one cell and anything under 100 % leaves one empty, so the
 // bar never says 0 or full when the number does not.
-func BarText(percent float64, width int) string {
+func BarText(percent float64, width int) string { return Bar(percent, width, "▓", "░") }
+
+// Bar is BarText drawn with the given full and empty cells.
+func Bar(percent float64, width int, full, empty string) string {
 	if width <= 0 {
 		return ""
 	}
@@ -38,7 +42,7 @@ func BarText(percent float64, width int) string {
 	case n >= width:
 		n = width - 1
 	}
-	return strings.Repeat("▓", n) + strings.Repeat("░", width-n)
+	return strings.Repeat(full, n) + strings.Repeat(empty, width-n)
 }
 
 // ResetText is when a limit resets, in local time: "13:00" today,
@@ -57,4 +61,36 @@ func ResetText(resetsAt, now time.Time) string {
 		return r.Format("Mon 15:04")
 	}
 	return r.Format("2 Jan")
+}
+
+// ResetInText is how long until a limit resets and when: "in 1d 5h · Tue
+// 01:00", so the day needs no counting; "—" for no window.
+func ResetInText(at, now time.Time) string {
+	if until := UntilText(at, now); until != "" {
+		return until + " · " + ResetText(at, now)
+	}
+	return ResetText(at, now)
+}
+
+// UntilText is how long until t, rounded up to the minute: "in 4d 22h",
+// "in 5h 12m", "in 43m"; "now" once t has passed; "" for no time.
+func UntilText(t, now time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	d := t.Sub(now)
+	if d <= 0 {
+		return "now"
+	}
+	if r := d % time.Minute; r > 0 {
+		d += time.Minute - r // round up: never "in 0m", never less than is left
+	}
+	h, m := int(d/time.Hour), int(d%time.Hour/time.Minute)
+	switch {
+	case h >= 24:
+		return fmt.Sprintf("in %dd %dh", h/24, h%24)
+	case h > 0:
+		return fmt.Sprintf("in %dh %dm", h, m)
+	}
+	return fmt.Sprintf("in %dm", m)
 }

@@ -67,3 +67,46 @@ func TestPercentText(t *testing.T) {
 		}
 	}
 }
+
+func TestResetInText(t *testing.T) {
+	now := time.Date(2026, 11, 9, 22, 0, 0, 0, time.UTC) // Mon 19:00 local
+	if got := domain.ResetInText(time.Date(2026, 11, 10, 4, 0, 0, 0, time.UTC), now); got != "in 6h 0m · Tue 01:00" {
+		t.Errorf("ResetInText = %q", got)
+	}
+	if got := domain.ResetInText(time.Time{}, now); got != "—" {
+		t.Errorf("ResetInText(no window) = %q, want —", got)
+	}
+}
+
+func TestBar(t *testing.T) {
+	if got := domain.Bar(41, 10, "▰", "▱"); got != "▰▰▰▰▱▱▱▱▱▱" {
+		t.Errorf("Bar = %q", got)
+	}
+}
+
+func TestUntilText(t *testing.T) {
+	now := time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name string
+		in   time.Duration
+		want string
+	}{
+		{"days and hours", 4*24*time.Hour + 22*time.Hour + 59*time.Minute, "in 4d 22h"},
+		{"exactly a day", 24 * time.Hour, "in 1d 0h"},
+		{"hours and minutes", 5*time.Hour + 12*time.Minute, "in 5h 12m"},
+		{"seconds round up", 5*time.Hour + 12*time.Minute + 30*time.Second, "in 5h 13m"},
+		{"minutes", 42*time.Minute + 10*time.Second, "in 43m"},
+		{"seconds count as a minute", 20 * time.Second, "in 1m"},
+		{"just under an hour", 59*time.Minute + 30*time.Second, "in 1h 0m"},
+		{"due", 0, "now"},
+		{"past", -time.Hour, "now"},
+	}
+	for _, c := range cases {
+		if got := domain.UntilText(now.Add(c.in), now); got != c.want {
+			t.Errorf("%s: UntilText = %q, want %q", c.name, got, c.want)
+		}
+	}
+	if got := domain.UntilText(time.Time{}, now); got != "" {
+		t.Errorf("no window: UntilText = %q, want empty", got)
+	}
+}

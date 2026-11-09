@@ -144,21 +144,28 @@ Update: `claude update` through execx (no console window), log output → `claud
 ### Tray menu (rendered from state.json)
 
 ```
-● ana@example.com · Max 20x                   active
-    weekly   ▓░░░░░░░░░   1 %   resets Sat 14 Nov 18:00
-  personal@…  · Pro
-    session  ▓▓▓▓▓▓▓▓░░  78 %   resets 13:00
-    weekly   ▓▓▓▓░░░░░░  41 %   resets Thu
-    Use this account
+🟢 ana@example.com · Max 20x · in use
+◯     weekly   ▰▱▱▱▱▱▱▱▱▱   1 %   resets in 4d 22h · Sat 18:00
+────────
+🟢 personal@… · Pro                      (others: soonest usable first)
+◯     session  ▰▰▰▰▰▰▰▰▱▱  78 %   resets in 1h 0m · 13:00
+◯     weekly   ▰▰▰▰▱▱▱▱▱▱  41 %   resets in 2d 19h · Thu 15:00
+      Use this account
 ────────
 ☐ Auto-switch at 95 %
 Add account…
 ────────
-Claude Code 2.1.300 · 2.1.319 available
+Claude Code 2.1.300 · 2.1.319 available (checked 18:13)
     Update now
 ────────
 Refresh now · Open log · Quit
 ```
+
+Each account row has a dot and each limit row a small ring (MarkPNG, the menu item's bitmap) in the level's
+colour: green < 80, amber ≥ 80, red ≥ 95 or unreadable, grey when not current. Account and limit rows are
+enabled labels (full-colour text, no click). The others are ordered by `domain.ByAvailability`: under the
+auto-switch threshold first (lowest percent first, as D8 picks), then by when their limit over it resets,
+the unreadable last; `ccswitch status` uses the same order.
 
 Icon: drawn at runtime (Go `image`): the active account's binding percent as a ring; green < 80, amber ≥ 80,
 red ≥ 95 or unreadable (with "!"). Tooltip = active email + binding percent. Undo appears as a menu row

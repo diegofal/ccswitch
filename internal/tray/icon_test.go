@@ -105,3 +105,39 @@ func TestIconPNGUnknownLevelIsRed(t *testing.T) {
 		t.Error("an unknown level must draw as alert red, never invisible")
 	}
 }
+
+func TestMarkPNGNoShapeIsNoPicture(t *testing.T) {
+	if b := MarkPNG(Mark{}); b != nil {
+		t.Errorf("MarkPNG(no shape) = %d bytes, want none", len(b))
+	}
+}
+
+func TestMarkPNGDotIsTheLevelColourInTheMiddleOnly(t *testing.T) {
+	img := decode(t, MarkPNG(Mark{Shape: MarkDot, Level: LevelWarn}))
+	if b := img.Bounds(); b.Dx() != MarkSize || b.Dy() != MarkSize {
+		t.Fatalf("mark is %v, want %d×%d", b, MarkSize, MarkSize)
+	}
+	if r, g, b, a := pixel(img, MarkSize/2, MarkSize/2); r != 230 || g != 160 || b != 20 || a != 255 {
+		t.Errorf("middle = %d,%d,%d,%d, want amber", r, g, b, a)
+	}
+	// The edge stays clear: Windows clips the picture to 16 px at 100 %.
+	for _, p := range [][2]int{{1, MarkSize / 2}, {MarkSize - 2, MarkSize / 2}, {MarkSize / 2, 1}, {MarkSize / 2, MarkSize - 2}} {
+		if _, _, _, a := pixel(img, p[0], p[1]); a != 0 {
+			t.Errorf("pixel %v is drawn (alpha %d); the margin should be clear", p, a)
+		}
+	}
+}
+
+func TestMarkPNGRingFollowsThePercent(t *testing.T) {
+	img := decode(t, MarkPNG(Mark{Shape: MarkRing, Level: LevelAlert, Percent: 30}))
+	top, bottom := [2]int{MarkSize/2 + 1, 4}, [2]int{MarkSize / 2, MarkSize - 5}
+	if r, g, _, _ := pixel(img, top[0], top[1]); r < 200 || g > 60 {
+		t.Errorf("30 %%: 12 o'clock should be red, got r=%d g=%d", r, g)
+	}
+	if r, g, _, _ := pixel(img, bottom[0], bottom[1]); r > 200 || r-g > 40 {
+		t.Errorf("30 %%: 6 o'clock should be the grey track, got r=%d g=%d", r, g)
+	}
+	if _, _, _, a := pixel(img, MarkSize/2, MarkSize/2); a != 0 {
+		t.Errorf("the ring's middle is drawn (alpha %d)", a)
+	}
+}
