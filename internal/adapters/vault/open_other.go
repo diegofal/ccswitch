@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build !windows && !darwin
 
 package vault
 
@@ -7,7 +7,8 @@ import (
 	"github.com/diegofal/ccswitch/internal/ports"
 )
 
-// Open returns the plain JSON vault (mode 0600) in dataDir.
+// Open returns the plain JSON vault (mode 0600) in dataDir, as Claude Code
+// itself keeps its login on Linux.
 func Open(dataDir string) (ports.Vault, error) {
 	return file.New(dataDir), nil
 }

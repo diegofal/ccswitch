@@ -1,3 +1,5 @@
+//go:build !darwin
+
 package vault_test
 
 import (
@@ -8,6 +10,8 @@ import (
 	"github.com/diegofal/ccswitch/internal/testkit"
 )
 
+// On macOS Open is the real keychain, which tests never touch
+// (open_darwin_test.go checks the choice only).
 func TestOpenRoundTrip(t *testing.T) {
 	v, err := vault.Open(t.TempDir())
 	if err != nil {

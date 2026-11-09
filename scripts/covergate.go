@@ -25,7 +25,7 @@ func gate(pkg string) float64 {
 	switch {
 	case strings.HasPrefix(rel, "cmd/"), strings.HasPrefix(rel, "internal/testkit"),
 		strings.HasPrefix(rel, "internal/ports"), strings.HasPrefix(rel, "internal/tray"),
-		strings.HasPrefix(rel, "internal/adapters/vault/dpapi"), strings.HasPrefix(rel, "internal/adapters/vault/keychain"),
+		strings.HasPrefix(rel, "internal/adapters/vault/dpapi"),
 		strings.HasPrefix(rel, "internal/adapters/notify"),
 		strings.HasPrefix(rel, "internal/adapters/execx"), strings.HasPrefix(rel, "internal/adapters/paths"),
 		strings.HasSuffix(rel, "test"):
