@@ -40,6 +40,11 @@ func DataDir() (string, error) { return osEnv().dataDir() }
 // ClaudeDir is Claude Code's folder: CCSWITCH_CLAUDE_DIR when set, else ~/.claude.
 func ClaudeDir() (string, error) { return osEnv().claudeDir() }
 
+// HomeClaudeDir is ~/.claude, ignoring CCSWITCH_CLAUDE_DIR: the folder
+// Claude Code uses when CLAUDE_CONFIG_DIR is unset. On macOS it decides the
+// keychain item's name (loginkeychain.ServiceFor).
+func HomeClaudeDir() (string, error) { return osEnv().homeClaudeDir() }
+
 // ClaudeConfigFile is the .claude.json inside dir: where Claude Code keeps
 // its config when CLAUDE_CONFIG_DIR=dir (the scratch folder of an add).
 func ClaudeConfigFile(dir string) string { return filepath.Join(dir, ".claude.json") }
@@ -94,6 +99,10 @@ func (e env) claudeDir() (string, error) {
 	if dir := e.getenv(EnvClaudeDir); dir != "" {
 		return dir, nil
 	}
+	return e.homeClaudeDir()
+}
+
+func (e env) homeClaudeDir() (string, error) {
 	home, err := e.homeDir()
 	if err != nil {
 		return "", err
