@@ -6,6 +6,8 @@ a limit, switch accounts by hand or automatically, and see / update the installe
 Go + Wails v3, one core, three front ends: tray (Windows tray · macOS menu bar · Linux AppIndicator),
 `ccswitch` CLI, and a Claude Code status line. Plan and decisions in [PLAN.md](PLAN.md).
 
+![The tray menu on Windows](docs/tray-menu.png)
+
 ## Decided
 
 | Topic | Decision |
@@ -38,7 +40,7 @@ In `~/.claude/settings.json`:
 | Live login | `~/.claude/.credentials.json` + `~/.claude.json` | Keychain item `Claude Code-credentials` + `~/.claude.json` | same files as Windows |
 | Vault | `accounts.json`, DPAPI | Keychain item `ccswitch-accounts` | `accounts.json`, mode 0600 |
 | CLI | pure Go | pure Go | pure Go |
-| Tray | pure Go | cgo (Wails, Xcode tools) | cgo (Wails: GTK 3, WebKitGTK 4.1, AppIndicator) |
+| Tray | pure Go | cgo (Wails, Xcode tools) | cgo (Wails v3: GTK 4, WebKitGTK 6.0, AppIndicator) |
 
 CI (`.github/workflows/ci.yml`) runs `task ci` on all three; a `v*` tag attaches one zip per OS to the release.
 

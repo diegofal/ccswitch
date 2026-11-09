@@ -235,3 +235,9 @@ Windows (domain 98 %, core 97 %, cli 97 %, tray model 99 %, adapters 87–100 %)
 bin/ccswitch-app.exe built. Run only against copies of the login so far: CLI `check` and the tray's first poll
 both read the real weekly usage and versions. WP-6 (TRY-IT.md: V1–V4, V6 with the maintainer's second account) is next;
 V5 needs a Mac. Not pushed; no GitHub repo yet.
+2026-11-09 12:30 — WP-6 part done on the real login: `check` captured the Example Co seat (vault sealed, no
+token in state/log, `.credentials.json` untouched); the tray ran on it (docs/tray-menu.png); "Update now"
+installed Claude Code 2.1.319 (V6). A read that starts failing now sends one notification "Usage unreadable".
+Pushed to github.com/diegofal/ccswitch (private); first CI run: macOS and Windows green, ubuntu needed GTK 4 /
+WebKitGTK 6.0 packages (Wails v3 default) — fixed. Left: V1–V4 with the maintainer's second account (TRY-IT.md steps
+2–4), V5 on a Mac.

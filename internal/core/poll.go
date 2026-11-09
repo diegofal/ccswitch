@@ -149,12 +149,16 @@ func (sw *Switcher) refresh(s *session, i int) error {
 	return nil
 }
 
-// alert posts every alert not sent yet (PLAN D7) and forgets the keys of
-// windows that have reset.
+// alert posts every alert not sent yet (PLAN D7), says once when a read
+// starts failing, and forgets the keys of windows that have reset.
 func (sw *Switcher) alert(s *session, prev map[string]domain.Usage) {
 	for _, a := range s.accts {
 		for _, al := range domain.Alerts(a.Email, prev[a.Email], s.usage[a.Email], s.set.AlertThresholds, s.st.Fired) {
 			sw.notifyOnce(s, al.Key, alertTitle(al), al.Message)
+		}
+		if al, ok := domain.UnreadableAlert(a.Email, prev[a.Email], s.usage[a.Email]); ok {
+			sw.d.Log.Printf("%s", al.Message)
+			sw.notify(s, "Usage unreadable", al.Message)
 		}
 	}
 	s.st.Prune(s.now)

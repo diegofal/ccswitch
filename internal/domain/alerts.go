@@ -103,3 +103,15 @@ func alertResetText(resetsAt, now time.Time) string {
 	}
 	return r.Format("15:04")
 }
+
+// UnreadableAlert is the alert for an account whose read failed when the one
+// before it had not (or there was none). A failed read is a critical state:
+// the icon turns red and this says why, once. The failures that follow and
+// the recovery give nothing; the numbers say that.
+func UnreadableAlert(email string, prev, cur Usage) (Alert, bool) {
+	if cur.Err == "" || prev.Err != "" {
+		return Alert{}, false
+	}
+	return Alert{Key: email + "|unreadable", Email: email, Threshold: -1,
+		Message: fmt.Sprintf("%s: usage could not be read (%s)", email, cur.Err)}, true
+}

@@ -7,6 +7,10 @@ copies of your login. Binaries: `bin\ccswitch.exe` (CLI) and `bin\ccswitch-app.e
 
 Before you start: `claude auth status --json` should show the account you expect as logged in.
 
+**Done on 2026-11-09 on the real login:** steps 1, 5 and 6 (`check` captured the Example Co seat, the tray
+showed it — [docs/tray-menu.png](docs/tray-menu.png) — and "Update now" installed 2.1.319). **Left for you:**
+steps 2, 3 and 4, which need the second account's browser login.
+
 ## 1. See the current account (nothing is written to Claude Code)
 
     bin\ccswitch.exe check
@@ -73,6 +77,8 @@ It prints `<account> · weekly 9% · Claude Code 2.1.300 (2.1.319 available)` fr
 ## If something goes wrong
 
 - `ccswitch status` shows "Last error: …" and the log is `%APPDATA%\ccswitch\ccswitch.log` (no tokens in it).
+- When an account's usage stops being readable, the icon turns red with a dot and one notification "Usage
+  unreadable: <email>: usage could not be read (<reason>)" is sent; it is not repeated while the failure lasts.
 - A failed switch restores the previous login by itself. If Claude Code ever says you are logged out, run
   `claude auth login` and then `ccswitch check`: the new login is captured and the vault updated.
 - Nothing here deletes anything in `~/.claude`; the only members ccswitch ever writes are `claudeAiOauth`,

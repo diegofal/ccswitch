@@ -134,3 +134,28 @@ func TestAlertsOnTheSessionWarningFixture(t *testing.T) {
 		t.Errorf("keys = %v, want none", got)
 	}
 }
+
+func TestUnreadableAlertOnTheFirstFailureOnly(t *testing.T) {
+	ok := domain.Usage{ReadAt: testkit.T0, Limits: []domain.Limit{{Kind: "weekly_all", Group: "weekly", Percent: 10, Active: true}}}
+	bad := domain.Unreadable(errors.New("HTTP 500"), testkit.T0)
+	cases := []struct {
+		name      string
+		prev, cur domain.Usage
+		want      bool
+	}{
+		{"first read fails", domain.Usage{}, bad, true},
+		{"readable then fails", ok, bad, true},
+		{"still failing", bad, bad, false},
+		{"readable again", bad, ok, false},
+		{"readable", ok, ok, false},
+	}
+	for _, c := range cases {
+		al, got := domain.UnreadableAlert("a@x", c.prev, c.cur)
+		if got != c.want {
+			t.Errorf("%s: alert = %v, want %v", c.name, got, c.want)
+		}
+		if got && al.Message != "a@x: usage could not be read (HTTP 500)" {
+			t.Errorf("%s: message = %q", c.name, al.Message)
+		}
+	}
+}

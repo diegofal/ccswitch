@@ -197,7 +197,7 @@ func TestPollCaptureFailureStopsThePoll(t *testing.T) {
 }
 
 func TestAlertsSentOnce(t *testing.T) {
-	r := newRig(t, "a@x", "b@x")
+	r := newRig(t, "a@x")
 	r.usage.Usages[access("a@x")] = usage(85)
 
 	st := r.mustNoError(r.sw.Poll(ctx, true))
@@ -377,5 +377,24 @@ func TestAlertTitles(t *testing.T) {
 	want := []string{"Limit reached: a@x: weekly limit reached (resets Wed 09:00)", "Available again: a@x is available again (weekly at 3 %)"}
 	if !slices.Equal(r.notify.Sent, want) {
 		t.Errorf("sent %q, want %q", r.notify.Sent, want)
+	}
+}
+
+func TestPollSaysOnceWhenAReadStartsFailing(t *testing.T) {
+	r := newRig(t, "a@x", "b@x")
+	r.mustNoError(r.sw.Poll(ctx, true))
+	if len(r.notify.Sent) != 0 {
+		t.Fatalf("sent = %v", r.notify.Sent)
+	}
+	r.usage.Errs[access("b@x")] = errors.New("HTTP 500")
+	r.mustNoError(r.sw.Poll(ctx, true))
+	if len(r.notify.Sent) != 1 || r.sent("b@x: usage could not be read (HTTP 500)") != 1 {
+		t.Fatalf("sent = %v", r.notify.Sent)
+	}
+	r.mustNoError(r.sw.Poll(ctx, true))
+	delete(r.usage.Errs, access("b@x"))
+	r.mustNoError(r.sw.Poll(ctx, true))
+	if len(r.notify.Sent) != 1 {
+		t.Errorf("a failure is said once, the recovery not at all: %v", r.notify.Sent)
 	}
 }
