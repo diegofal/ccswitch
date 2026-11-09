@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/diegofal/ccswitch/internal/adapters/atomicfile"
 	"github.com/diegofal/ccswitch/internal/domain"
 	"github.com/diegofal/ccswitch/internal/ports"
 )
@@ -130,55 +131,9 @@ func (s *Store) write(name string, v any) error {
 	if err != nil {
 		return fmt.Errorf("write %s: %w", name, err)
 	}
-	if err := writeAtomic(s.dir, name, append(data, '\n')); err != nil {
+	if err := os.MkdirAll(s.dir, 0o700); err != nil {
 		return fmt.Errorf("write %s: %w", name, err)
 	}
-	return nil
-}
-
-// writeAtomic writes data to a temp file in dir (CreateTemp makes it 0600:
-// state names the accounts), syncs it and renames it over dir/name.
-func writeAtomic(dir, name string, data []byte) error {
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return err
-	}
-	tmp, err := os.CreateTemp(dir, name+".*.tmp")
-	if err != nil {
-		return err
-	}
-	done := false
-	defer func() {
-		if !done {
-			_ = tmp.Close()
-			_ = os.Remove(tmp.Name())
-		}
-	}()
-	if _, err := tmp.Write(data); err != nil {
-		return err
-	}
-	if err := tmp.Sync(); err != nil {
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	if err := rename(tmp.Name(), filepath.Join(dir, name)); err != nil {
-		return err
-	}
-	done = true
-	return nil
-}
-
-// rename retries briefly: on Windows a reader that has the target open (the
-// statusline reads state.json without the lock) makes the rename fail for
-// the moment it takes to read.
-func rename(from, to string) error {
-	var err error
-	for range 10 {
-		if err = os.Rename(from, to); err == nil {
-			return nil
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	return err
+	// 0600: state names the accounts.
+	return atomicfile.Write(s.path(name), append(data, '\n'), 0o600)
 }

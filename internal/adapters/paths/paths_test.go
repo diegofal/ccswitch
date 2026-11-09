@@ -57,6 +57,15 @@ func TestClaudeDir(t *testing.T) {
 	}
 }
 
+func TestHomeClaudeDirIgnoresTheOverride(t *testing.T) {
+	if got, _ := fakeEnv("darwin", map[string]string{EnvClaudeDir: "c"}, "h").homeClaudeDir(); got != filepath.Join("h", ".claude") {
+		t.Errorf("homeClaudeDir = %q", got)
+	}
+	if _, err := fakeEnv("darwin", nil, "").homeClaudeDir(); err == nil {
+		t.Error("want an error without a home folder")
+	}
+}
+
 func TestConfigFiles(t *testing.T) {
 	dir := filepath.Join("h", ".claude")
 	if got, want := ClaudeConfigFileBeside(dir), filepath.Join("h", ".claude.json"); got != want {

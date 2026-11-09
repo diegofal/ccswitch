@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/diegofal/ccswitch/internal/adapters/atomicfile"
 )
@@ -56,5 +57,33 @@ func TestWriteOverDirectoryFailsAndCleansUp(t *testing.T) {
 	entries, _ := os.ReadDir(dir)
 	if len(entries) != 1 {
 		t.Fatalf("temp file left behind: %v", entries)
+	}
+}
+
+// On Windows a reader holding the target open (the statusline reads
+// state.json without the lock) makes a rename fail until it closes; Write
+// waits it out.
+func TestWriteWaitsForAReaderToClose(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reader, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	closed := make(chan struct{})
+	go func() {
+		time.Sleep(60 * time.Millisecond)
+		_ = reader.Close()
+		close(closed)
+	}()
+	err = atomicfile.Write(path, []byte("new"), 0o600)
+	<-closed
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != "new" {
+		t.Fatalf("got %q", got)
 	}
 }
