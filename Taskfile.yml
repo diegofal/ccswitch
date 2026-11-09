@@ -37,12 +37,17 @@ tasks:
 
   build:
     desc: Build bin/ccswitch (CLI) and bin/ccswitch-app (tray, no console window on Windows)
+    # A binary whose cmd folder does not exist yet (WP-4, WP-5) is skipped, so
+    # the earlier lanes can run `task ci`.
     cmds:
-      - go build -trimpath -ldflags "-X main.version={{.VERSION}}" -o bin/ccswitch{{exeExt}} ./cmd/ccswitch
+      - cmd: go build -trimpath -ldflags "-X main.version={{.VERSION}}" -o bin/ccswitch{{exeExt}} ./cmd/ccswitch
+        if: '[ -d cmd/ccswitch ]'
       - cmd: go build -trimpath -ldflags "-H windowsgui -X main.version={{.VERSION}}" -o bin/ccswitch-app.exe ./cmd/ccswitch-app
         platforms: [windows]
+        if: '[ -d cmd/ccswitch-app ]'
       - cmd: go build -trimpath -ldflags "-X main.version={{.VERSION}}" -o bin/ccswitch-app ./cmd/ccswitch-app
         platforms: [darwin, linux]
+        if: '[ -d cmd/ccswitch-app ]'
 
   ci:
     desc: Everything CI runs, locally
