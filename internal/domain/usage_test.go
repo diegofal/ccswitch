@@ -61,6 +61,27 @@ func assertLimits(t *testing.T, u domain.Usage, want []domain.Limit) {
 	}
 }
 
+func TestParseUsageSessionRowWithoutAWindow(t *testing.T) {
+	// Recorded 2026-11-09 from an account with no 5-hour session open: the
+	// session row has resets_at null and is not active.
+	u, err := domain.ParseUsage(testkit.Fixture(t, "usage-session-null-reset.json"), t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []domain.Limit{
+		{Kind: "session", Group: "session", Percent: 0, Severity: "normal"},
+		{Kind: "weekly_all", Group: "weekly", Percent: 94, Severity: "critical", ResetsAt: mustTime(t, "2026-11-13T15:59:59.887308+00:00"), Active: true},
+		{Kind: "weekly_scoped", Group: "weekly", Scope: "Fable", Percent: 75, Severity: "warning", ResetsAt: mustTime(t, "2026-11-13T15:59:59.887522+00:00")},
+	}
+	assertLimits(t, u, want)
+	if b, ok := u.Binding(); !ok || b.Kind != "weekly_all" {
+		t.Errorf("binding = %+v, %v", b, ok)
+	}
+	if u, err := domain.ParseUsage([]byte(`{"limits":[{"kind":"k","group":"g","percent":5,"severity":"normal","is_active":true}]}`), t0); err != nil || !u.Limits[0].ResetsAt.IsZero() {
+		t.Errorf("a row without resets_at: %+v, %v", u, err)
+	}
+}
+
 func TestParseUsageRejectsWhatItCannotRead(t *testing.T) {
 	row := func(drop string) string {
 		parts := []string{`"kind":"k"`, `"group":"g"`, `"percent":5`, `"severity":"normal"`, `"resets_at":"2026-11-09T14:00:00Z"`, `"is_active":true`}
@@ -84,7 +105,6 @@ func TestParseUsageRejectsWhatItCannotRead(t *testing.T) {
 		"no group":          row("group"),
 		"no percent":        row("percent"),
 		"no severity":       row("severity"),
-		"no resets_at":      row("resets_at"),
 		"no is_active":      row("is_active"),
 		"percent a string":  `{"limits":[{"kind":"k","group":"g","percent":"5","severity":"normal","resets_at":"2026-11-09T14:00:00Z","is_active":true}]}`,
 		"bad resets_at":     `{"limits":[{"kind":"k","group":"g","percent":5,"severity":"normal","resets_at":"tomorrow","is_active":true}]}`,

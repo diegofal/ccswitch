@@ -44,6 +44,9 @@ func BarText(percent float64, width int) string {
 // ResetText is when a limit resets, in local time: "13:00" today,
 // "Fri 18:00" within a week, else "14 Nov".
 func ResetText(resetsAt, now time.Time) string {
+	if resetsAt.IsZero() {
+		return "—"
+	}
 	r, n := resetsAt.In(time.Local), now.In(time.Local)
 	ry, rm, rd := r.Date()
 	ny, nm, nd := n.Date()

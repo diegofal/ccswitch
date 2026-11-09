@@ -91,12 +91,18 @@ func sameLimit(u Usage, l Limit) (Limit, bool) {
 // and the digits differ between rows of the same window, so they may differ
 // between reads too, and an alert must not fire twice for that.
 func alertKey(email string, l Limit, threshold float64) string {
-	return strings.Join([]string{email, limitID(l), l.ResetsAt.UTC().Round(time.Minute).Format(time.RFC3339),
-		strconv.FormatFloat(threshold, 'f', -1, 64)}, "|")
+	resets := "none" // a limit without a window: its key is never pruned
+	if !l.ResetsAt.IsZero() {
+		resets = l.ResetsAt.UTC().Round(time.Minute).Format(time.RFC3339)
+	}
+	return strings.Join([]string{email, limitID(l), resets, strconv.FormatFloat(threshold, 'f', -1, 64)}, "|")
 }
 
 // alertResetText is "HH:MM" local, or "Mon HH:MM" when more than 24 h away.
 func alertResetText(resetsAt, now time.Time) string {
+	if resetsAt.IsZero() {
+		return "—"
+	}
 	r := resetsAt.In(time.Local)
 	if resetsAt.Sub(now) > 24*time.Hour {
 		return r.Format("Mon 15:04")

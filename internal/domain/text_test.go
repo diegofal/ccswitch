@@ -51,6 +51,7 @@ func TestResetText(t *testing.T) {
 		{"within a week", time.Date(2026, 11, 13, 21, 0, 0, 0, time.UTC), "Fri 18:00"},
 		{"a week or more", time.Date(2026, 11, 16, 12, 0, 0, 0, time.UTC), "16 Nov"},
 		{"past", time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC), "2 Nov"},
+		{"no window", time.Time{}, "—"},
 	}
 	for _, c := range cases {
 		if got := domain.ResetText(c.resets, now); got != c.want {

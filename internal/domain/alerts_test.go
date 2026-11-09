@@ -3,6 +3,7 @@ package domain_test
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -132,6 +133,19 @@ func TestAlertsOnTheSessionWarningFixture(t *testing.T) {
 	// never means reached.
 	if got := keys(domain.Alerts("a@x", domain.Usage{}, cur, thresholds, nil)); len(got) != 0 {
 		t.Errorf("keys = %v, want none", got)
+	}
+}
+
+func TestAlertsLimitWithoutAWindowKeepsItsKey(t *testing.T) {
+	cur := domain.Usage{ReadAt: testkit.T0, Limits: []domain.Limit{{Kind: "session", Group: "session", Percent: 85, Severity: "warning", Active: true}}}
+	got := domain.Alerts("a@x", domain.Usage{}, cur, []float64{80}, nil)
+	if len(got) != 1 || got[0].Key != "a@x|session|none|80" || !strings.Contains(got[0].Message, "resets —") {
+		t.Errorf("alerts = %+v", got)
+	}
+	st := domain.State{Fired: map[string]bool{got[0].Key: true}}
+	st.Prune(testkit.T0.Add(24 * time.Hour))
+	if !st.Fired[got[0].Key] {
+		t.Error("a key without a reset time must survive Prune")
 	}
 }
 

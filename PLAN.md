@@ -241,3 +241,9 @@ installed Claude Code 2.1.319 (V6). A read that starts failing now sends one not
 Pushed to github.com/diegofal/ccswitch (private); first CI run: macOS and Windows green, ubuntu needed GTK 4 /
 WebKitGTK 6.0 packages (Wails v3 default) — fixed. Left: V1–V4 with the maintainer's second account (TRY-IT.md steps
 2–4), V5 on a Mac.
+2026-11-09 13:30 — the maintainer added home@example.net, dev@example.org and seat@example.com
+(V1 passed; V2 passed: A→B→A within 15 s, both tokens still read usage). The Example account showed
+"unreadable: limits[0]: no resets_at": the endpoint returns the session row with `resets_at: null` (0 %, not
+active) while no 5-hour window is open. Fixed: a null reset is a limit without a window (shown "—", alert key
+"none", never pruned); fixture usage-session-null-reset.json; scripts/usageraw.go prints an account's raw
+response (no secret) for the next shape surprise. Left: V3, V5.

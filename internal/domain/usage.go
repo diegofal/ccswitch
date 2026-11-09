@@ -78,14 +78,18 @@ func parseLimit(raw json.RawMessage) (Limit, error) {
 		return Limit{}, errors.New("no percent")
 	case r.Severity == nil:
 		return Limit{}, errors.New("no severity")
-	case r.ResetsAt == nil:
-		return Limit{}, errors.New("no resets_at")
 	case r.IsActive == nil:
 		return Limit{}, errors.New("no is_active")
 	}
-	resets, err := time.Parse(time.RFC3339Nano, *r.ResetsAt)
-	if err != nil {
-		return Limit{}, fmt.Errorf("resets_at: %w", err)
+	// resets_at is null on the session row while no 5-hour window is open
+	// (the row is then at 0 % and not active): a limit without a reset
+	// time, not an unreadable response.
+	var resets time.Time
+	if r.ResetsAt != nil {
+		var err error
+		if resets, err = time.Parse(time.RFC3339Nano, *r.ResetsAt); err != nil {
+			return Limit{}, fmt.Errorf("resets_at: %w", err)
+		}
 	}
 	l := Limit{Kind: *r.Kind, Group: *r.Group, Percent: *r.Percent, Severity: *r.Severity, ResetsAt: resets, Active: *r.IsActive}
 	if r.Scope != nil && r.Scope.Model != nil {
