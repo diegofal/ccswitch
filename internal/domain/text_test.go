@@ -58,3 +58,11 @@ func TestResetText(t *testing.T) {
 		}
 	}
 }
+
+func TestPercentText(t *testing.T) {
+	for p, want := range map[float64]string{0: "0", 78: "78", 99.69: "99.6", 0.7: "0.7", 100: "100"} {
+		if got := domain.PercentText(p); got != want {
+			t.Errorf("PercentText(%v) = %q, want %q", p, got, want)
+		}
+	}
+}

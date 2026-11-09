@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+// PercentText is a percent as every front end writes it, without the sign:
+// "78", "99.6" (never rounded up to "100").
+func PercentText(p float64) string { return pct(p) }
+
 // pct writes a percent the way every front end shows it: whole numbers bare,
 // anything else with one decimal, so 99.6 never reads as "100".
 func pct(p float64) string {
