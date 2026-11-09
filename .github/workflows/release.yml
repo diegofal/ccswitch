@@ -1,0 +1,36 @@
+name: release
+
+# A tag v* runs the whole CI matrix, then attaches one zip per OS to the
+# GitHub release of the tag.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bin-*
+      - name: zip
+        shell: bash
+        run: |
+          for os in Linux macOS Windows; do
+            # Artifacts drop the executable bit; put it back for Unix.
+            [ "$os" = Windows ] || chmod +x "bin-$os"/*
+            (cd "bin-$os" && zip -r "../ccswitch-${GITHUB_REF_NAME}-${os,,}.zip" .)
+          done
+      - name: attach
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes ccswitch-*.zip

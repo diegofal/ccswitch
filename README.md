@@ -31,6 +31,29 @@ In `~/.claude/settings.json`:
 { "statusLine": { "type": "command", "command": "ccswitch statusline" } }
 ```
 
+## Platforms
+
+| | Windows | macOS | Linux |
+|---|---|---|---|
+| Live login | `~/.claude/.credentials.json` + `~/.claude.json` | Keychain item `Claude Code-credentials` + `~/.claude.json` | same files as Windows |
+| Vault | `accounts.json`, DPAPI | Keychain item `ccswitch-accounts` | `accounts.json`, mode 0600 |
+| CLI | pure Go | pure Go | pure Go |
+| Tray | pure Go | cgo (Wails, Xcode tools) | cgo (Wails: GTK 3, WebKitGTK 4.1, AppIndicator) |
+
+CI (`.github/workflows/ci.yml`) runs `task ci` on all three; a `v*` tag attaches one zip per OS to the release.
+
+**Untested on a Mac (PLAN V5).** The keychain adapters (`loginkeychain`, `vault/keychain`) are tested on every OS
+against a fake `security`, never against a real Keychain. Not yet checked on a Mac: the item name and account
+Claude Code uses (`Claude Code-credentials`, `$USER`; and `Claude Code-credentials-<8 hex of sha256(dir)>`
+for a `CLAUDE_CONFIG_DIR` folder, which `add` relies on), the `security` output format we parse (`-w`, hex for
+non-ASCII data, `mdat`), whether `security add-generic-password -U` keeps the item readable by Claude Code, the
+menu bar icon and menu, notifications from an unsigned binary, and Gatekeeper on a downloaded zip.
+`security` takes the secret as an argument, so `ps` can show it while the command runs, as with Claude Code's
+own writes.
+
+On Linux the tray needs a desktop with AppIndicator / StatusNotifier support (GNOME needs the AppIndicator
+extension); the CLI and `statusline` need nothing.
+
 ## Dev
 
 See [CLAUDE.md](CLAUDE.md). `task ci` runs what CI runs.
