@@ -69,8 +69,9 @@ const (
 )
 
 // MenuModel is the tray menu for st (PLAN §4): the last error first, then
-// each account with its active limits, the auto-switch and undo, adding an
-// account, the Claude Code version, and the app's own items.
+// the active account and the others, each with its active limits, the
+// auto-switch and undo, adding an account, the Claude Code version, and
+// the app's own items.
 func MenuModel(st domain.State, set domain.Settings, now time.Time, maxAge time.Duration, ui UI) []Row {
 	var rows []Row
 	if st.LastError != "" {
@@ -79,8 +80,13 @@ func MenuModel(st domain.State, set domain.Settings, now time.Time, maxAge time.
 	if len(st.Accounts) == 0 {
 		rows = append(rows, label("No account yet"))
 	}
+	if a, ok := active(st); ok {
+		rows = append(rows, accountRows(a, true, now, maxAge)...)
+	}
 	for _, a := range st.Accounts {
-		rows = append(rows, accountRows(a, a.Email == st.Active, now, maxAge)...)
+		if a.Email != st.Active {
+			rows = append(rows, accountRows(a, false, now, maxAge)...)
+		}
 	}
 	rows = append(rows, sep(),
 		Row{Kind: Check, Text: "Auto-switch at " + domain.PercentText(set.ThresholdPercent) + " %", Enabled: true, Checked: set.Auto, Action: ActAuto})

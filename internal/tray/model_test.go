@@ -348,3 +348,12 @@ func TestTooltipText(t *testing.T) {
 		})
 	}
 }
+
+func TestMenuModelActiveAccountFirst(t *testing.T) {
+	st := twoAccounts()
+	st.Active = "personal@x.com"
+	menu := dump(MenuModel(st, domain.DefaultSettings(), t0, maxAge, UI{}))
+	if !strings.HasPrefix(menu, "  ● personal@x.com · Pro\n") || !strings.Contains(menu, "  ○ ana@example.com · Max 20x\n") {
+		t.Errorf("menu =\n%s", menu)
+	}
+}
