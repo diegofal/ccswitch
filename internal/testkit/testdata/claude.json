@@ -1,0 +1,28 @@
+{
+  "numStartups": 412,
+  "installMethod": "native",
+  "autoUpdates": false,
+  "tipsHistory": {
+    "new-user-warmup": 7,
+    "plan-mode-for-complex-tasks": 30
+  },
+  "projects": {
+    "D:/pocs/ccswitch": {
+      "allowedTools": [],
+      "mcpServers": {},
+      "lastCost": 0.4215,
+      "lastSessionId": "00000000-0000-4000-8000-000000000001"
+    }
+  },
+  "userID": "fake-user-id",
+  "oauthAccount": {
+    "accountUuid": "00000000-0000-4000-8000-0000000000a1",
+    "emailAddress": "Old.User@Example.com",
+    "organizationUuid": "00000000-0000-4000-8000-00000000000a",
+    "organizationName": "Old Org",
+    "planDisplayName": "Max 20x",
+    "displayName": "Old"
+  },
+  "hasCompletedOnboarding": true,
+  "unknownFutureMember": [true,false,null]
+}
