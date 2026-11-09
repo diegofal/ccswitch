@@ -107,7 +107,7 @@ cmd/ccswitch-app/      Tray (Wails v3 systray + notifications service + autostar
 internal/domain/       Account, Usage, Limit, PatchCredentials, PatchConfig, Binding, Decide, Alerts,
                        CompareVersion. Pure: no IO, no time.Now (clock passed in).
 internal/ports/        LoginStore, Vault, UsageAPI, Claude, Releases, Notifier, Clock, Lock
-internal/adapters/     loginfile (win/linux) · loginkeychain (mac) · vault/{dpapi,keychain,file}
+internal/adapters/     login (files on win/linux, keychain on mac) · vault (dpapi, keychain, file)
                        · usageapi (http) · npmreg · claudecli (exec, hidden console) · notify · lock · execx
 internal/core/         Switcher: Capture, Snapshot, Switch, Undo, Poll, Alert, AutoSwitch, CheckVersion,
                        Update, State cache (state.json, atomic write)
@@ -190,9 +190,9 @@ Domain tests (table-driven):
   target over or stale or out of pool → nil with reason), `Alerts` (crossings, once per window, reset
   message), `CompareVersion` ("2.1.300" < "2.1.319"; equal; malformed → error).
 
-Adapter tests: `loginfile` round-trip in a temp dir keeping mode 0600 and unknown keys; `usageapi` and
-`npmreg` against `httptest` (200, 401, 500, bad JSON, timeout); `vault/file` and `vault/dpapi` round-trip
-(dpapi test runs on Windows only); `claudecli` against a fake `claude` binary (Go test binary pattern, like
+Adapter tests: `login` file store round-trip in a temp dir keeping mode 0600 and unknown keys; `usageapi` and
+`npmreg` against `httptest` (200, 401, 500, bad JSON, timeout); `vault` file and DPAPI round-trip
+(the DPAPI test runs on Windows only); `claudecli` against a fake `claude` binary (Go test binary pattern, like
 Fieldwork's fake-claude.exe) for `--version`, `update`, `auth status --json`; `lock` blocks a second holder.
 
 Core tests with testkit fakes, one scenario each: capture of a new login; snapshot of refreshed tokens before
@@ -225,12 +225,12 @@ same from the tray on the test copy. Only after this does the real `~/.claude` g
 | WP | Scope | Depends on |
 |---|---|---|
 | 1 | domain + ports + testkit fakes (the contract) | — |
-| 2 | adapters: loginfile, usageapi, npmreg, vault/file, vault/dpapi, claudecli, lock, execx, paths | 1 |
+| 2 | adapters: login (files), usageapi, npmreg, vault (file, DPAPI), claudecli, lock, execx, paths | 1 |
 | 3 | core Switcher + state cache | 1 (fakes), merges after 2 |
 | 4 | CLI (all commands incl. watch, statusline) | 2, 3 |
 | 5 | tray app (Wails v3): menu, icon, notifications, autostart, Add/Update actions | 2, 3 |
 | 6 | V1–V4, V6 with the maintainer on a test copy; fix what they reveal; TRY-IT.md | 4, 5 |
-| 7 | macOS adapters (loginkeychain, vault/keychain) + CI matrix ubuntu/windows/macos + release zips | 4 |
+| 7 | macOS adapters (login and vault keychain) + CI matrix ubuntu/windows/macos + release zips | 4 |
 
 Lanes: WP-1 alone first. Then WP-2 ∥ WP-3. Then WP-4 ∥ WP-5 ∥ WP-7. WP-6 last, with the maintainer.
 

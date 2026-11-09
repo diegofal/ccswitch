@@ -1,8 +1,8 @@
-// Package loginfile is Claude Code's live login as files:
-// ~/.claude/.credentials.json and ~/.claude.json (ports.LoginStore). Its
-// ConfigFile is the .claude.json half on its own, which the macOS store
-// (loginkeychain) shares.
-package loginfile
+// Package login is Claude Code's live login (ports.LoginStore) and the
+// choice of it for this OS (Open): FileStore, the two files
+// ~/.claude/.credentials.json and ~/.claude.json, on Windows and Linux;
+// KeychainStore, the keychain item plus the same .claude.json, on macOS.
+package login
 
 import (
 	"fmt"
@@ -15,22 +15,22 @@ import (
 	"github.com/diegofal/ccswitch/internal/ports"
 )
 
-var _ ports.LoginStore = (*Store)(nil)
+var _ ports.LoginStore = (*FileStore)(nil)
 
-// Store reads and patches the two files at the given paths.
-type Store struct {
+// FileStore reads and patches the two files at the given paths.
+type FileStore struct {
 	credentials jsonFile
 	config      ConfigFile
 }
 
-// New returns the store over the credentials file (.credentials.json) and the
-// config file (.claude.json).
-func New(credentialsPath, configPath string) *Store {
-	return &Store{credentials: jsonFile(credentialsPath), config: Config(configPath)}
+// NewFile returns the store over the credentials file (.credentials.json) and
+// the config file (.claude.json).
+func NewFile(credentialsPath, configPath string) *FileStore {
+	return &FileStore{credentials: jsonFile(credentialsPath), config: Config(configPath)}
 }
 
 // Read returns the login held in the two files.
-func (s *Store) Read() (domain.Login, error) {
+func (s *FileStore) Read() (domain.Login, error) {
 	creds, _, err := s.credentials.read()
 	if err != nil {
 		return domain.Login{}, err
@@ -44,7 +44,7 @@ func (s *Store) Read() (domain.Login, error) {
 
 // Write patches l into both files. Both patches are made before either file
 // is replaced, so a login the patch rejects leaves both files as they were.
-func (s *Store) Write(l domain.Login) error {
+func (s *FileStore) Write(l domain.Login) error {
 	writeCreds, err := s.credentials.patch(l, domain.PatchCredentialsFile)
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func (s *Store) Write(l domain.Login) error {
 }
 
 // ModTime is the credentials file's modification time.
-func (s *Store) ModTime() (time.Time, error) {
+func (s *FileStore) ModTime() (time.Time, error) {
 	fi, err := os.Stat(string(s.credentials))
 	if err != nil {
 		return time.Time{}, fmt.Errorf("claude login file: %w", err)

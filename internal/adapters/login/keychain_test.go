@@ -1,4 +1,4 @@
-package loginkeychain_test
+package login_test
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/diegofal/ccswitch/internal/adapters/keychainitem"
-	"github.com/diegofal/ccswitch/internal/adapters/loginkeychain"
+	"github.com/diegofal/ccswitch/internal/adapters/login"
 	"github.com/diegofal/ccswitch/internal/domain"
 	"github.com/diegofal/ccswitch/internal/testkit"
 )
@@ -64,25 +64,25 @@ func (k *keychain) run(_ context.Context, args ...string) ([]byte, error) {
 
 const user = "someone"
 
-func setup(t *testing.T) (*keychain, string) {
+func keychainSetup(t *testing.T) (*keychain, string) {
 	t.Helper()
 	config := filepath.Join(t.TempDir(), ".claude.json")
 	if err := os.WriteFile(config, testkit.Fixture(t, "claude.json"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	k := &keychain{items: map[string]string{
-		loginkeychain.Service + "/" + user: string(testkit.Fixture(t, "credentials.json")),
+		login.Service + "/" + user: string(testkit.Fixture(t, "credentials.json")),
 	}}
 	return k, config
 }
 
-func store(k *keychain, config string) *loginkeychain.Store {
-	return loginkeychain.New(loginkeychain.Service, user, config, k.run)
+func keychainStore(k *keychain, config string) *login.KeychainStore {
+	return login.NewKeychain(login.Service, user, config, k.run)
 }
 
-func TestRead(t *testing.T) {
-	k, config := setup(t)
-	l, err := store(k, config).Read()
+func TestKeychainRead(t *testing.T) {
+	k, config := keychainSetup(t)
+	l, err := keychainStore(k, config).Read()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestRead(t *testing.T) {
 	}
 }
 
-func members(t *testing.T, b []byte) map[string]json.RawMessage {
+func keychainMembers(t *testing.T, b []byte) map[string]json.RawMessage {
 	t.Helper()
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(b, &m); err != nil {
@@ -101,10 +101,10 @@ func members(t *testing.T, b []byte) map[string]json.RawMessage {
 }
 
 func TestWritePatchesTheItemAndTheConfig(t *testing.T) {
-	k, config := setup(t)
-	key := loginkeychain.Service + "/" + user
+	k, config := keychainSetup(t)
+	key := login.Service + "/" + user
 	oldCreds := k.items[key]
-	s := store(k, config)
+	s := keychainStore(k, config)
 
 	if err := s.Write(testkit.FakeLogin("new@example.com")); err != nil {
 		t.Fatal(err)
@@ -120,20 +120,20 @@ func TestWritePatchesTheItemAndTheConfig(t *testing.T) {
 	if !strings.Contains(k.items[key], "fake-access-new@example.com") {
 		t.Fatal("the keychain item does not hold the new token")
 	}
-	if !bytes.Equal(members(t, []byte(k.items[key]))["mcpOAuth"], members(t, []byte(oldCreds))["mcpOAuth"]) {
+	if !bytes.Equal(keychainMembers(t, []byte(k.items[key]))["mcpOAuth"], keychainMembers(t, []byte(oldCreds))["mcpOAuth"]) {
 		t.Fatal("mcpOAuth changed")
 	}
 }
 
 func TestRejectedLoginWritesNothing(t *testing.T) {
-	k, config := setup(t)
+	k, config := keychainSetup(t)
 	oldConfig, _ := os.ReadFile(config)
 	bad := testkit.FakeLogin("new@example.com")
 	bad.Profile = nil // the credentials patch succeeds, the config one fails
-	if err := store(k, config).Write(bad); err == nil {
+	if err := keychainStore(k, config).Write(bad); err == nil {
 		t.Fatal("want an error for a login without a profile")
 	}
-	if err := store(k, config).Write(domain.Login{}); err == nil {
+	if err := keychainStore(k, config).Write(domain.Login{}); err == nil {
 		t.Fatal("want an error for an empty login")
 	}
 	newConfig, _ := os.ReadFile(config)
@@ -143,10 +143,10 @@ func TestRejectedLoginWritesNothing(t *testing.T) {
 }
 
 func TestFailedKeychainWriteLeavesTheConfig(t *testing.T) {
-	k, config := setup(t)
+	k, config := keychainSetup(t)
 	k.setErr = exitError(1)
 	oldConfig, _ := os.ReadFile(config)
-	err := store(k, config).Write(testkit.FakeLogin("new@example.com"))
+	err := keychainStore(k, config).Write(testkit.FakeLogin("new@example.com"))
 	if err == nil || strings.Contains(err.Error(), "fake-access") {
 		t.Fatalf("err %v: want an error without the token", err)
 	}
@@ -157,10 +157,10 @@ func TestFailedKeychainWriteLeavesTheConfig(t *testing.T) {
 }
 
 func TestNotLoggedIn(t *testing.T) {
-	k, config := setup(t)
+	k, config := keychainSetup(t)
 	k.items = map[string]string{}
-	s := store(k, config)
-	if _, err := s.Read(); !errors.Is(err, keychainitem.ErrNotFound) || !strings.Contains(err.Error(), loginkeychain.Service) {
+	s := keychainStore(k, config)
+	if _, err := s.Read(); !errors.Is(err, keychainitem.ErrNotFound) || !strings.Contains(err.Error(), login.Service) {
 		t.Fatalf("Read: %v, want ErrNotFound naming the item", err)
 	}
 	if err := s.Write(testkit.FakeLogin("new@example.com")); !errors.Is(err, keychainitem.ErrNotFound) {
@@ -172,8 +172,8 @@ func TestNotLoggedIn(t *testing.T) {
 }
 
 func TestMissingConfig(t *testing.T) {
-	k, _ := setup(t)
-	s := store(k, filepath.Join(t.TempDir(), "absent.json"))
+	k, _ := keychainSetup(t)
+	s := keychainStore(k, filepath.Join(t.TempDir(), "absent.json"))
 	if _, err := s.Read(); err == nil || !strings.Contains(err.Error(), "absent.json") {
 		t.Fatalf("Read: %v, want an error naming the file", err)
 	}
@@ -182,9 +182,9 @@ func TestMissingConfig(t *testing.T) {
 	}
 }
 
-func TestModTime(t *testing.T) {
-	k, config := setup(t)
-	got, err := store(k, config).ModTime()
+func TestKeychainModTime(t *testing.T) {
+	k, config := keychainSetup(t)
+	got, err := keychainStore(k, config).ModTime()
 	if want := time.Date(2026, 11, 9, 12, 34, 56, 0, time.UTC); err != nil || !got.Equal(want) {
 		t.Fatalf("ModTime %v, %v; want %v", got, err, want)
 	}
@@ -192,23 +192,23 @@ func TestModTime(t *testing.T) {
 
 func TestServiceFor(t *testing.T) {
 	home := filepath.Join("Users", "someone", ".claude")
-	if got := loginkeychain.ServiceFor(home, home); got != "Claude Code-credentials" {
+	if got := login.ServiceFor(home, home); got != "Claude Code-credentials" {
 		t.Fatalf("default folder: %q", got)
 	}
 	// Claude Code with CLAUDE_CONFIG_DIR=dir names the item with the first
 	// 8 hex digits of sha256(dir).
-	if got := loginkeychain.ServiceFor("/tmp/scratch", home); got != "Claude Code-credentials-e549f2e8" {
+	if got := login.ServiceFor("/tmp/scratch", home); got != "Claude Code-credentials-e549f2e8" {
 		t.Fatalf("scratch folder: %q", got)
 	}
 }
 
 func TestCurrentUser(t *testing.T) {
 	t.Setenv("USER", "from-env")
-	if got := loginkeychain.CurrentUser(); got != "from-env" {
+	if got := login.CurrentUser(); got != "from-env" {
 		t.Fatalf("CurrentUser %q", got)
 	}
 	t.Setenv("USER", "")
-	if got := loginkeychain.CurrentUser(); got == "" {
+	if got := login.CurrentUser(); got == "" {
 		t.Fatal("CurrentUser empty without USER")
 	}
 }

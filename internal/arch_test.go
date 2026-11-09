@@ -129,7 +129,7 @@ func TestArchitectureCatchesViolations(t *testing.T) {
 		{module + "/internal/core", []string{module + "/internal/adapters/usageapi"}},
 		{module + "/internal/core", []string{"github.com/some/lib"}},
 		{module + "/internal/adapters/usageapi", []string{module + "/internal/core"}},
-		{module + "/internal/cli", []string{module + "/internal/adapters/loginfile"}},
+		{module + "/internal/cli", []string{module + "/internal/adapters/login"}},
 		{module + "/internal/cli", []string{module + "/internal/ports"}},
 		{module + "/internal/tray", []string{module + "/internal/testkit"}},
 		{module + "/internal/newthing", nil},
@@ -147,9 +147,9 @@ func TestArchitectureCatchesViolations(t *testing.T) {
 		{module + "/internal/ports", []string{module + "/internal/domain", "context"}},
 		{module + "/internal/testkit", []string{module + "/internal/domain", module + "/internal/ports"}},
 		{module + "/internal/core", []string{module + "/internal/domain", module + "/internal/ports", module + "/internal/core/state"}},
-		{module + "/internal/adapters/vault/dpapi", []string{"golang.org/x/sys/windows", module + "/internal/adapters/paths", module + "/internal/ports"}},
+		{module + "/internal/adapters/vault", []string{"golang.org/x/sys/windows", module + "/internal/adapters/paths", module + "/internal/ports"}},
 		{module + "/internal/tray", []string{"github.com/wailsapp/wails/v3/pkg/application", module + "/internal/core", module + "/internal/domain"}},
-		{module + "/cmd/ccswitch", []string{module + "/internal/adapters/loginfile", module + "/internal/core", module + "/internal/cli"}},
+		{module + "/cmd/ccswitch", []string{module + "/internal/adapters/login", module + "/internal/core", module + "/internal/cli"}},
 	}
 	for _, c := range ok {
 		if v := check(c.pkg, c.imports); len(v) != 0 {

@@ -1,6 +1,8 @@
-// Package file is the vault as accounts.json in the app data folder
-// (ports.Vault): plain JSON, or sealed bytes when built with NewSealed.
-package file
+// Package vault is the store of the saved accounts (ports.Vault) and the
+// choice of it for this OS (Open): FileVault, accounts.json in the app data
+// folder, sealed with DPAPI on Windows (NewDPAPI) and plain 0600 JSON on
+// Linux; KeychainVault, one item in the login keychain, on macOS.
+package vault
 
 import (
 	"encoding/json"
@@ -18,29 +20,29 @@ import (
 // Name is the vault's file name inside the data folder.
 const Name = "accounts.json"
 
-var _ ports.Vault = (*Vault)(nil)
+var _ ports.Vault = (*FileVault)(nil)
 
-// Vault keeps every account in one file, readable by the user only.
-type Vault struct {
+// FileVault keeps every account in one file, readable by the user only.
+type FileVault struct {
 	path         string
 	seal, unseal func([]byte) ([]byte, error)
 }
 
 func same(b []byte) ([]byte, error) { return b, nil }
 
-// New returns the plain JSON vault at <dir>/accounts.json.
-func New(dir string) *Vault {
-	return NewSealed(dir, same, same)
+// NewFile returns the plain JSON vault at <dir>/accounts.json.
+func NewFile(dir string) *FileVault {
+	return NewSealedFile(dir, same, same)
 }
 
-// NewSealed returns the vault at <dir>/accounts.json whose bytes pass through
+// NewSealedFile returns the vault at <dir>/accounts.json whose bytes pass through
 // seal on the way to disk and unseal on the way back (DPAPI on Windows).
-func NewSealed(dir string, seal, unseal func([]byte) ([]byte, error)) *Vault {
-	return &Vault{path: filepath.Join(dir, Name), seal: seal, unseal: unseal}
+func NewSealedFile(dir string, seal, unseal func([]byte) ([]byte, error)) *FileVault {
+	return &FileVault{path: filepath.Join(dir, Name), seal: seal, unseal: unseal}
 }
 
 // Load returns the stored accounts; none when the file does not exist yet.
-func (v *Vault) Load() ([]domain.Account, error) {
+func (v *FileVault) Load() ([]domain.Account, error) {
 	b, err := os.ReadFile(v.path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return []domain.Account{}, nil
@@ -62,7 +64,7 @@ func (v *Vault) Load() ([]domain.Account, error) {
 }
 
 // Save replaces the stored accounts, creating the folder on first use.
-func (v *Vault) Save(accounts []domain.Account) error {
+func (v *FileVault) Save(accounts []domain.Account) error {
 	if accounts == nil {
 		accounts = []domain.Account{}
 	}

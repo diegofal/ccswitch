@@ -17,16 +17,16 @@ const module = "github.com/diegofal/ccswitch/"
 
 // gate returns the minimum coverage for a package, or -1 to skip it.
 // Skipped: wiring (cmd/, covered end to end), contracts and fakes, and the
-// adapters that only run on one OS or talk to the desktop (dpapi, notify,
-// execx, the tray's Wails shell), which the lane tests on its platform. The
-// keychain adapters (faked `security` runner) and the tray's menu model and
-// icon (internal/tray) are gated.
+// adapters that only run on one OS or talk to the desktop (notify, execx,
+// the tray's Wails shell), which the lane tests on its platform. The vault
+// (its DPAPI half is tested on Windows), the keychain adapters (faked
+// `security` runner) and the tray's menu model and icon (internal/tray) are
+// gated.
 func gate(pkg string) float64 {
 	rel := strings.TrimPrefix(pkg, module)
 	switch {
 	case strings.HasPrefix(rel, "cmd/"), strings.HasPrefix(rel, "internal/testkit"),
 		strings.HasPrefix(rel, "internal/ports"), strings.HasPrefix(rel, "internal/tray/shell"),
-		strings.HasPrefix(rel, "internal/adapters/vault/dpapi"),
 		strings.HasPrefix(rel, "internal/adapters/notify"),
 		strings.HasPrefix(rel, "internal/adapters/execx"), strings.HasPrefix(rel, "internal/adapters/paths"),
 		strings.HasSuffix(rel, "test"):

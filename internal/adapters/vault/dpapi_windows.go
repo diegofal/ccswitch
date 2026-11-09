@@ -1,9 +1,9 @@
 //go:build windows
 
-// Package dpapi is the vault on Windows: accounts.json sealed with DPAPI for
-// the current user, so another user or another machine cannot read the
-// tokens (PLAN D4).
-package dpapi
+// The vault on Windows: accounts.json sealed with DPAPI for the current
+// user, so another user or another machine cannot read the tokens (PLAN D4).
+
+package vault
 
 import (
 	"errors"
@@ -12,7 +12,6 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/diegofal/ccswitch/internal/adapters/vault/file"
 	"github.com/diegofal/ccswitch/internal/ports"
 )
 
@@ -20,9 +19,9 @@ import (
 // user cannot unseal them with a bare DPAPI call.
 var entropy = []byte("ccswitch")
 
-// New returns the DPAPI-sealed vault at <dir>/accounts.json.
-func New(dir string) (ports.Vault, error) {
-	return file.NewSealed(dir, protect, unprotect), nil
+// NewDPAPI returns the DPAPI-sealed vault at <dir>/accounts.json.
+func NewDPAPI(dir string) (ports.Vault, error) {
+	return NewSealedFile(dir, protect, unprotect), nil
 }
 
 func blob(b []byte) *windows.DataBlob {

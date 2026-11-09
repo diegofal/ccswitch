@@ -1,9 +1,9 @@
-// Package loginkeychain is Claude Code's live login on macOS
-// (ports.LoginStore): the credentials JSON is a generic password in the login
-// keychain, the profile is the same .claude.json as on the other systems
-// (loginfile.ConfigFile). It builds on every OS; `security` is injected.
-// Untested on a real Mac (PLAN V5).
-package loginkeychain
+// Claude Code's live login on macOS (KeychainStore): the credentials JSON is
+// a generic password in the login keychain, the profile is the same
+// .claude.json as on the other systems (ConfigFile). It builds on every OS;
+// `security` is injected. Untested on a real Mac (PLAN V5).
+
+package login
 
 import (
 	"crypto/sha256"
@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/diegofal/ccswitch/internal/adapters/keychainitem"
-	"github.com/diegofal/ccswitch/internal/adapters/loginfile"
 	"github.com/diegofal/ccswitch/internal/domain"
 	"github.com/diegofal/ccswitch/internal/ports"
 )
@@ -22,20 +21,20 @@ import (
 // CLAUDE_CONFIG_DIR is unset.
 const Service = "Claude Code-credentials"
 
-var _ ports.LoginStore = (*Store)(nil)
+var _ ports.LoginStore = (*KeychainStore)(nil)
 
-// Store is the keychain item plus the config file.
-type Store struct {
+// KeychainStore is the keychain item plus the config file.
+type KeychainStore struct {
 	item   keychainitem.Item
-	config loginfile.ConfigFile
+	config ConfigFile
 }
 
-// New returns the store over the keychain item (service, account) and the
-// config file at configPath, calling `security` through run.
-func New(service, account, configPath string, run keychainitem.Runner) *Store {
-	return &Store{
+// NewKeychain returns the store over the keychain item (service, account) and
+// the config file at configPath, calling `security` through run.
+func NewKeychain(service, account, configPath string, run keychainitem.Runner) *KeychainStore {
+	return &KeychainStore{
 		item:   keychainitem.Item{Service: service, Account: account, Run: run},
-		config: loginfile.Config(configPath),
+		config: Config(configPath),
 	}
 }
 
@@ -65,7 +64,7 @@ func CurrentUser() string {
 }
 
 // Read returns the login held in the keychain item and the config file.
-func (s *Store) Read() (domain.Login, error) {
+func (s *KeychainStore) Read() (domain.Login, error) {
 	creds, err := s.item.Get()
 	if err != nil {
 		return domain.Login{}, err
@@ -80,7 +79,7 @@ func (s *Store) Read() (domain.Login, error) {
 // Write patches l into the item and the file. Both patches are made before
 // either is replaced, and the item goes first: a failed keychain write leaves
 // both as they were.
-func (s *Store) Write(l domain.Login) error {
+func (s *KeychainStore) Write(l domain.Login) error {
 	creds, err := s.item.Get()
 	if err != nil {
 		return err
@@ -100,4 +99,4 @@ func (s *Store) Write(l domain.Login) error {
 }
 
 // ModTime is the keychain item's modification date.
-func (s *Store) ModTime() (time.Time, error) { return s.item.ModTime() }
+func (s *KeychainStore) ModTime() (time.Time, error) { return s.item.ModTime() }

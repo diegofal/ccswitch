@@ -1,4 +1,4 @@
-package loginfile_test
+package login_test
 
 import (
 	"bytes"
@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/diegofal/ccswitch/internal/adapters/loginfile"
+	"github.com/diegofal/ccswitch/internal/adapters/login"
 	"github.com/diegofal/ccswitch/internal/domain"
 	"github.com/diegofal/ccswitch/internal/testkit"
 )
 
-// setup copies the fixtures into a temp folder laid out like ~/.claude and
+// fileSetup copies the fixtures into a temp folder laid out like ~/.claude and
 // ~/.claude.json.
-func setup(t *testing.T) (creds, config string) {
+func fileSetup(t *testing.T) (creds, config string) {
 	t.Helper()
 	dir := t.TempDir()
 	if err := os.Mkdir(filepath.Join(dir, ".claude"), 0o700); err != nil {
@@ -34,7 +34,7 @@ func setup(t *testing.T) (creds, config string) {
 	return creds, config
 }
 
-func members(t *testing.T, b []byte) map[string]json.RawMessage {
+func fileMembers(t *testing.T, b []byte) map[string]json.RawMessage {
 	t.Helper()
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(b, &m); err != nil {
@@ -52,9 +52,9 @@ func read(t *testing.T, path string) []byte {
 	return b
 }
 
-func TestRead(t *testing.T) {
-	creds, config := setup(t)
-	l, err := loginfile.New(creds, config).Read()
+func TestFileRead(t *testing.T) {
+	creds, config := fileSetup(t)
+	l, err := login.NewFile(creds, config).Read()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,9 +65,9 @@ func TestRead(t *testing.T) {
 }
 
 func TestWritePatchesOnlyTheLoginMembers(t *testing.T) {
-	creds, config := setup(t)
+	creds, config := fileSetup(t)
 	oldCreds, oldConfig := read(t, creds), read(t, config)
-	store := loginfile.New(creds, config)
+	store := login.NewFile(creds, config)
 	want := testkit.FakeLogin("new@example.com")
 
 	if err := store.Write(want); err != nil {
@@ -84,7 +84,7 @@ func TestWritePatchesOnlyTheLoginMembers(t *testing.T) {
 	}
 	checkUntouched(t, oldCreds, read(t, creds), "claudeAiOauth", "organizationUuid")
 	checkUntouched(t, oldConfig, read(t, config), "oauthAccount")
-	if !bytes.Contains(read(t, creds), members(t, oldCreds)["mcpOAuth"]) {
+	if !bytes.Contains(read(t, creds), fileMembers(t, oldCreds)["mcpOAuth"]) {
 		t.Fatal("mcpOAuth bytes changed")
 	}
 }
@@ -105,7 +105,7 @@ func sameJSON(t *testing.T, a, b []byte) bool {
 
 func checkUntouched(t *testing.T, before, after []byte, written ...string) {
 	t.Helper()
-	b, a := members(t, before), members(t, after)
+	b, a := fileMembers(t, before), fileMembers(t, after)
 	for k, v := range b {
 		if contains(written, k) {
 			continue
@@ -132,11 +132,11 @@ func TestWriteKeepsModes(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows has no Unix permission bits")
 	}
-	creds, config := setup(t)
+	creds, config := fileSetup(t)
 	if err := os.Chmod(config, 0o640); err != nil {
 		t.Fatal(err)
 	}
-	if err := loginfile.New(creds, config).Write(testkit.FakeLogin("new@example.com")); err != nil {
+	if err := login.NewFile(creds, config).Write(testkit.FakeLogin("new@example.com")); err != nil {
 		t.Fatal(err)
 	}
 	for path, want := range map[string]os.FileMode{creds: 0o600, config: 0o640} {
@@ -151,15 +151,15 @@ func TestWriteKeepsModes(t *testing.T) {
 }
 
 func TestRejectedLoginLeavesBothFiles(t *testing.T) {
-	creds, config := setup(t)
+	creds, config := fileSetup(t)
 	oldCreds, oldConfig := read(t, creds), read(t, config)
 	bad := testkit.FakeLogin("new@example.com")
 	bad.Profile = nil // the credentials patch succeeds, the config one fails
-	if err := loginfile.New(creds, config).Write(bad); err == nil {
+	if err := login.NewFile(creds, config).Write(bad); err == nil {
 		t.Fatal("want an error for a login without a profile")
 	}
 	bad = domain.Login{}
-	if err := loginfile.New(creds, config).Write(bad); err == nil {
+	if err := login.NewFile(creds, config).Write(bad); err == nil {
 		t.Fatal("want an error for an empty login")
 	}
 	if !bytes.Equal(read(t, creds), oldCreds) || !bytes.Equal(read(t, config), oldConfig) {
@@ -168,11 +168,11 @@ func TestRejectedLoginLeavesBothFiles(t *testing.T) {
 }
 
 func TestMissingFiles(t *testing.T) {
-	creds, config := setup(t)
+	creds, config := fileSetup(t)
 	missing := filepath.Join(t.TempDir(), "absent.json")
-	cases := map[string]*loginfile.Store{
-		"credentials": loginfile.New(missing, config),
-		"config":      loginfile.New(creds, missing),
+	cases := map[string]*login.FileStore{
+		"credentials": login.NewFile(missing, config),
+		"config":      login.NewFile(creds, missing),
 	}
 	for name, store := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -189,37 +189,37 @@ func TestMissingFiles(t *testing.T) {
 	if _, err := os.Stat(missing); !os.IsNotExist(err) {
 		t.Fatal("Write created a missing file")
 	}
-	if _, err := loginfile.New(missing, config).ModTime(); err == nil {
+	if _, err := login.NewFile(missing, config).ModTime(); err == nil {
 		t.Fatal("ModTime: want an error for a missing file")
 	}
 }
 
 func TestReadRejectsBrokenFile(t *testing.T) {
-	creds, config := setup(t)
+	creds, config := fileSetup(t)
 	if err := os.WriteFile(creds, []byte("{not json"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := loginfile.New(creds, config).Read(); err == nil {
+	if _, err := login.NewFile(creds, config).Read(); err == nil {
 		t.Fatal("want an error for a broken credentials file")
 	}
 }
 
-func TestModTime(t *testing.T) {
-	creds, config := setup(t)
+func TestFileModTime(t *testing.T) {
+	creds, config := fileSetup(t)
 	when := time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC)
 	if err := os.Chtimes(creds, when, when); err != nil {
 		t.Fatal(err)
 	}
-	got, err := loginfile.New(creds, config).ModTime()
+	got, err := login.NewFile(creds, config).ModTime()
 	if err != nil || !got.Equal(when) {
 		t.Fatalf("ModTime %v, %v; want %v", got, err, when)
 	}
 }
 
 func TestConfigFilePatchWritesOnlyWhenCalled(t *testing.T) {
-	_, config := setup(t)
+	_, config := fileSetup(t)
 	old := read(t, config)
-	c := loginfile.Config(config)
+	c := login.Config(config)
 	got, err := c.Read()
 	if err != nil || !bytes.Equal(got, old) {
 		t.Fatalf("Read: %v", err)
@@ -238,7 +238,7 @@ func TestConfigFilePatchWritesOnlyWhenCalled(t *testing.T) {
 	if !strings.Contains(string(read(t, config)), "new@example.com") {
 		t.Fatal("the profile was not written")
 	}
-	if _, err := loginfile.Config(filepath.Join(t.TempDir(), "absent.json")).Patch(testkit.FakeLogin("x@example.com")); err == nil {
+	if _, err := login.Config(filepath.Join(t.TempDir(), "absent.json")).Patch(testkit.FakeLogin("x@example.com")); err == nil {
 		t.Fatal("Patch: want an error for a missing file")
 	}
 }

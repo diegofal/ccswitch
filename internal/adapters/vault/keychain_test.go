@@ -1,4 +1,4 @@
-package keychain_test
+package vault_test
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/diegofal/ccswitch/internal/adapters/vault/keychain"
+	"github.com/diegofal/ccswitch/internal/adapters/vault"
 	"github.com/diegofal/ccswitch/internal/domain"
 	"github.com/diegofal/ccswitch/internal/testkit"
 )
@@ -42,7 +42,7 @@ func (k *fakeKeychain) run(_ context.Context, args ...string) ([]byte, error) {
 	return nil, fmt.Errorf("unexpected %v", args)
 }
 
-func account(t *testing.T, email string) domain.Account {
+func keychainAccount(t *testing.T, email string) domain.Account {
 	t.Helper()
 	a, err := domain.AccountFromLogin(testkit.FakeLogin(email), testkit.T0)
 	if err != nil {
@@ -53,7 +53,7 @@ func account(t *testing.T, email string) domain.Account {
 
 func TestEmptyKeychainIsNoAccounts(t *testing.T) {
 	k := &fakeKeychain{}
-	got, err := keychain.New("/data", k.run).Load()
+	got, err := vault.NewKeychain("/data", k.run).Load()
 	if err != nil || got == nil || len(got) != 0 {
 		t.Fatalf("Load %v, %v; want an empty list", got, err)
 	}
@@ -61,8 +61,8 @@ func TestEmptyKeychainIsNoAccounts(t *testing.T) {
 
 func TestRoundTripInOneItem(t *testing.T) {
 	k := &fakeKeychain{}
-	v := keychain.New("/data", k.run)
-	if err := v.Save([]domain.Account{account(t, "a@example.com"), account(t, "b@example.com")}); err != nil {
+	v := vault.NewKeychain("/data", k.run)
+	if err := v.Save([]domain.Account{keychainAccount(t, "a@example.com"), keychainAccount(t, "b@example.com")}); err != nil {
 		t.Fatal(err)
 	}
 	got, err := v.Load()
@@ -79,23 +79,23 @@ func TestRoundTripInOneItem(t *testing.T) {
 
 func TestSaveNilIsEmptyList(t *testing.T) {
 	k := &fakeKeychain{}
-	if err := keychain.New("/data", k.run).Save(nil); err != nil || k.data == nil || *k.data != "[]" {
+	if err := vault.NewKeychain("/data", k.run).Save(nil); err != nil || k.data == nil || *k.data != "[]" {
 		t.Fatalf("Save(nil): %v, stored %v", err, k.data)
 	}
 }
 
-func TestFailures(t *testing.T) {
+func TestKeychainFailures(t *testing.T) {
 	broken := "{not json"
-	if _, err := keychain.New("/data", (&fakeKeychain{data: &broken}).run).Load(); err == nil {
+	if _, err := vault.NewKeychain("/data", (&fakeKeychain{data: &broken}).run).Load(); err == nil {
 		t.Fatal("Load: want an error for a broken item")
 	}
 	k := &fakeKeychain{setErr: exitError(51)}
-	err := keychain.New("/data", k.run).Save([]domain.Account{account(t, "a@example.com")})
+	err := vault.NewKeychain("/data", k.run).Save([]domain.Account{keychainAccount(t, "a@example.com")})
 	if err == nil || strings.Contains(err.Error(), "fake-refresh") {
 		t.Fatalf("Save: %v, want an error without the tokens", err)
 	}
 	failing := func(context.Context, ...string) ([]byte, error) { return nil, exitError(36) }
-	if _, err := keychain.New("/data", failing).Load(); err == nil {
+	if _, err := vault.NewKeychain("/data", failing).Load(); err == nil {
 		t.Fatal("Load: want an error when security fails")
 	}
 }

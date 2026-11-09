@@ -42,7 +42,7 @@ func ClaudeDir() (string, error) { return osEnv().claudeDir() }
 
 // HomeClaudeDir is ~/.claude, ignoring CCSWITCH_CLAUDE_DIR: the folder
 // Claude Code uses when CLAUDE_CONFIG_DIR is unset. On macOS it decides the
-// keychain item's name (loginkeychain.ServiceFor).
+// keychain item's name (login.ServiceFor).
 func HomeClaudeDir() (string, error) { return osEnv().homeClaudeDir() }
 
 // ClaudeConfigFile is the .claude.json inside dir: where Claude Code keeps

@@ -1,6 +1,6 @@
 //go:build windows
 
-package dpapi_test
+package vault_test
 
 import (
 	"os"
@@ -9,15 +9,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/diegofal/ccswitch/internal/adapters/vault/dpapi"
-	"github.com/diegofal/ccswitch/internal/adapters/vault/file"
+	"github.com/diegofal/ccswitch/internal/adapters/vault"
 	"github.com/diegofal/ccswitch/internal/domain"
 	"github.com/diegofal/ccswitch/internal/testkit"
 )
 
 func TestRoundTripSealed(t *testing.T) {
 	dir := t.TempDir()
-	v, err := dpapi.New(dir)
+	v, err := vault.NewDPAPI(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +28,7 @@ func TestRoundTripSealed(t *testing.T) {
 	if err := v.Save(want); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := os.ReadFile(filepath.Join(dir, file.Name))
+	raw, err := os.ReadFile(filepath.Join(dir, vault.Name))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,12 +43,12 @@ func TestRoundTripSealed(t *testing.T) {
 
 func TestUnsealRefusesForeignBytes(t *testing.T) {
 	dir := t.TempDir()
-	v, err := dpapi.New(dir)
+	v, err := vault.NewDPAPI(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, content := range []string{"", `[]`} {
-		if err := os.WriteFile(filepath.Join(dir, file.Name), []byte(content), 0o600); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, vault.Name), []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := v.Load(); err == nil {

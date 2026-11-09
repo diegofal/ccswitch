@@ -1,4 +1,4 @@
-package file_test
+package vault_test
 
 import (
 	"errors"
@@ -9,12 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/diegofal/ccswitch/internal/adapters/vault/file"
+	"github.com/diegofal/ccswitch/internal/adapters/vault"
 	"github.com/diegofal/ccswitch/internal/domain"
 	"github.com/diegofal/ccswitch/internal/testkit"
 )
 
-func accounts(t *testing.T) []domain.Account {
+func fileAccounts(t *testing.T) []domain.Account {
 	t.Helper()
 	var out []domain.Account
 	for _, email := range []string{"a@example.com", "b@example.com"} {
@@ -28,17 +28,17 @@ func accounts(t *testing.T) []domain.Account {
 	return out
 }
 
-func TestEmptyWhenAbsent(t *testing.T) {
-	got, err := file.New(t.TempDir()).Load()
+func TestFileEmptyWhenAbsent(t *testing.T) {
+	got, err := vault.NewFile(t.TempDir()).Load()
 	if err != nil || got == nil || len(got) != 0 {
 		t.Fatalf("Load %v, %v; want an empty list", got, err)
 	}
 }
 
-func TestRoundTrip(t *testing.T) {
+func TestFileRoundTrip(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "not-yet")
-	v := file.New(dir)
-	want := accounts(t)
+	v := vault.NewFile(dir)
+	want := fileAccounts(t)
 	if err := v.Save(want); err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatalf("round trip:\n%+v\nwant\n%+v", got, want)
 	}
 	if runtime.GOOS != "windows" {
-		fi, err := os.Stat(filepath.Join(dir, file.Name))
+		fi, err := os.Stat(filepath.Join(dir, vault.Name))
 		if err != nil || fi.Mode().Perm() != 0o600 {
 			t.Fatalf("mode %v, %v; want 0600", fi.Mode().Perm(), err)
 		}
@@ -72,12 +72,12 @@ func TestSealed(t *testing.T) {
 		}
 		return out, nil
 	}
-	v := file.NewSealed(dir, flip, flip)
-	want := accounts(t)
+	v := vault.NewSealedFile(dir, flip, flip)
+	want := fileAccounts(t)
 	if err := v.Save(want); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := os.ReadFile(filepath.Join(dir, file.Name))
+	raw, err := os.ReadFile(filepath.Join(dir, vault.Name))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestSealed(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("sealed round trip: %v", err)
 	}
-	if _, err := file.New(dir).Load(); err == nil {
+	if _, err := vault.NewFile(dir).Load(); err == nil {
 		t.Fatal("reading a sealed vault as plain JSON must fail")
 	}
 }
@@ -96,23 +96,23 @@ func TestSealed(t *testing.T) {
 func TestSealErrors(t *testing.T) {
 	dir := t.TempDir()
 	boom := func([]byte) ([]byte, error) { return nil, errors.New("boom") }
-	if err := file.NewSealed(dir, boom, boom).Save(accounts(t)); err == nil {
+	if err := vault.NewSealedFile(dir, boom, boom).Save(fileAccounts(t)); err == nil {
 		t.Fatal("Save: want the seal error")
 	}
-	if err := file.New(dir).Save(accounts(t)); err != nil {
+	if err := vault.NewFile(dir).Save(fileAccounts(t)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := file.NewSealed(dir, boom, boom).Load(); err == nil {
+	if _, err := vault.NewSealedFile(dir, boom, boom).Load(); err == nil {
 		t.Fatal("Load: want the unseal error")
 	}
 }
 
 func TestBrokenFileNamesNoToken(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, file.Name), []byte(`[{"Login":{"Credentials":fake-refresh-x}}]`), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, vault.Name), []byte(`[{"Login":{"Credentials":fake-refresh-x}}]`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err := file.New(dir).Load()
+	_, err := vault.NewFile(dir).Load()
 	if err == nil || strings.Contains(err.Error(), "fake-refresh") {
 		t.Fatalf("error %v: want one without the token", err)
 	}
@@ -124,13 +124,13 @@ func TestUnusableFolder(t *testing.T) {
 	if err := os.WriteFile(blocker, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := file.New(filepath.Join(blocker, "sub")).Save(accounts(t)); err == nil {
+	if err := vault.NewFile(filepath.Join(blocker, "sub")).Save(fileAccounts(t)); err == nil {
 		t.Fatal("Save: want an error when the folder cannot be made")
 	}
-	if err := os.Mkdir(filepath.Join(dir, file.Name), 0o700); err != nil {
+	if err := os.Mkdir(filepath.Join(dir, vault.Name), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := file.New(dir).Load(); err == nil {
+	if _, err := vault.NewFile(dir).Load(); err == nil {
 		t.Fatal("Load: want an error when accounts.json is a folder")
 	}
 }

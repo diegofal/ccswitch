@@ -4,7 +4,6 @@ package login
 
 import (
 	"github.com/diegofal/ccswitch/internal/adapters/keychainitem"
-	"github.com/diegofal/ccswitch/internal/adapters/loginkeychain"
 	"github.com/diegofal/ccswitch/internal/adapters/paths"
 	"github.com/diegofal/ccswitch/internal/ports"
 )
@@ -17,5 +16,5 @@ func Open(claudeDir, configPath string) ports.LoginStore {
 	// When home is unknown it is "", so no folder is taken for ~/.claude
 	// and none reaches the real item.
 	home, _ := paths.HomeClaudeDir()
-	return loginkeychain.New(loginkeychain.ServiceFor(claudeDir, home), loginkeychain.CurrentUser(), configPath, keychainitem.Security)
+	return NewKeychain(ServiceFor(claudeDir, home), CurrentUser(), configPath, keychainitem.Security)
 }

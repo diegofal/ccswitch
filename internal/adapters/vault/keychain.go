@@ -1,9 +1,10 @@
-// Package keychain is the vault on macOS (ports.Vault): every account as
-// one JSON value in one generic password, "ccswitch-accounts", in the login
-// keychain, through the `security` program (keychainitem). The keychain
-// encrypts the whole value, so nothing is sealed here. It builds on every
-// OS; `security` is injected. Untested on a real Mac (PLAN V5).
-package keychain
+// The vault on macOS (KeychainVault): every account as one JSON value in one
+// generic password, "ccswitch-accounts", in the login keychain, through the
+// `security` program (keychainitem). The keychain encrypts the whole value,
+// so nothing is sealed here. It builds on every OS; `security` is injected.
+// Untested on a real Mac (PLAN V5).
+
+package vault
 
 import (
 	"encoding/json"
@@ -18,20 +19,20 @@ import (
 // Service is the keychain item's service name.
 const Service = "ccswitch-accounts"
 
-var _ ports.Vault = (*Vault)(nil)
+var _ ports.Vault = (*KeychainVault)(nil)
 
-// Vault is the one keychain item.
-type Vault struct{ item keychainitem.Item }
+// KeychainVault is the one keychain item.
+type KeychainVault struct{ item keychainitem.Item }
 
-// New returns the vault for the data folder dataDir, calling `security`
+// NewKeychain returns the vault for the data folder dataDir, calling `security`
 // through run. The folder is the item's account, so a test copy with its own
 // CCSWITCH_DATA_DIR has its own item and never reaches the real vault.
-func New(dataDir string, run keychainitem.Runner) *Vault {
-	return &Vault{item: keychainitem.Item{Service: Service, Account: dataDir, Run: run}}
+func NewKeychain(dataDir string, run keychainitem.Runner) *KeychainVault {
+	return &KeychainVault{item: keychainitem.Item{Service: Service, Account: dataDir, Run: run}}
 }
 
 // Load returns the stored accounts; none when the item does not exist yet.
-func (v *Vault) Load() ([]domain.Account, error) {
+func (v *KeychainVault) Load() ([]domain.Account, error) {
 	b, err := v.item.Get()
 	if errors.Is(err, keychainitem.ErrNotFound) {
 		return []domain.Account{}, nil
@@ -52,7 +53,7 @@ func (v *Vault) Load() ([]domain.Account, error) {
 // Save replaces the stored accounts, creating the item on first use. The
 // JSON holds every account's tokens and `security` takes it as an argument
 // (keychainitem.Item.Set).
-func (v *Vault) Save(accounts []domain.Account) error {
+func (v *KeychainVault) Save(accounts []domain.Account) error {
 	if accounts == nil {
 		accounts = []domain.Account{}
 	}
