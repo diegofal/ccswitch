@@ -254,3 +254,9 @@ WebKitGTK 6.0 packages (Wails v3 default) — fixed. Left: V1–V4 with the main
 active) while no 5-hour window is open. Fixed: a null reset is a limit without a window (shown "—", alert key
 "none", never pruned); fixture usage-session-null-reset.json; scripts/usageraw.go prints an account's raw
 response (no secret) for the next shape surprise. Left: V3, V5.
+2026-11-09 19:55 — Tray: a coloured dot per account and ring per limit, "resets in 1d 5h · Tue 01:00", the
+others soonest usable first (CLI too), version row "up to date (checked HH:MM)". README rewritten as a
+getting-started guide for the team. **Gap found:** D14's "a Team/Enterprise seat goes out of the pool" is not
+implemented: every captured account gets `InPool: true`, the Example Co seat included, and no field read so far
+tells a work seat (it reports plan "Ultra" like the personal ones). Until a fact says how to tell, the README
+says every account starts in the pool and `ccswitch pool <email> off` keeps one out. Left: V3, V4, V5.
