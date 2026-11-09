@@ -260,3 +260,8 @@ getting-started guide for the team. **Gap found:** D14's "a Team/Enterprise seat
 implemented: every captured account gets `InPool: true`, the Example Co seat included, and no field read so far
 tells a work seat (it reports plan "Ultra" like the personal ones). Until a fact says how to tell, the README
 says every account starts in the pool and `ccswitch pool <email> off` keeps one out. Left: V3, V4, V5.
+2026-11-09 20:15 — D14 done: `oauthAccount.seatTier` exists and is null on all four of the maintainer's accounts, which
+are individual subscriptions (`billingType: stripe_subscription`, the default "<email>'s Organization", role
+admin), the Example Co login included. A new account with any non-null `seatTier` starts out of the pool. The
+value a real Team seat carries has not been seen; a wrong positive only leaves an account out until
+`pool on`. Accounts already stored are not changed.

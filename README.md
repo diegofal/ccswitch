@@ -19,8 +19,9 @@ One tray icon, a `ccswitch` CLI, and an optional Claude Code status line, all re
 - Claude Code installed, `claude` on your `PATH`, and logged in with a subscription account
   (`claude auth status` shows it). API keys and claude.ai web/desktop logins are out of scope.
 - **Check the rules first.** Using several subscriptions to get past one account's limits may not fit
-  Anthropic's terms or your company's policy. Deciding that is up to you. Every account you add starts in
-  the auto-switch pool; keep a work seat out with `ccswitch pool <email> off`.
+  Anthropic's terms or your company's policy. Deciding that is up to you. A seat in a Team or Enterprise
+  organisation starts out of the auto-switch pool; any other account starts in it. Change either with
+  `ccswitch pool <email> on|off`.
 
 ## Install
 

@@ -25,6 +25,16 @@ type profile struct {
 	EmailAddress     string `json:"emailAddress"`
 	OrganizationName string `json:"organizationName"`
 	PlanDisplayName  string `json:"planDisplayName"`
+	// SeatTier is null for an individual subscription; any other value is
+	// read as a seat in a Team or Enterprise organisation (PLAN D14). Raw:
+	// its shape for a seat has not been seen.
+	SeatTier json.RawMessage `json:"seatTier"`
+}
+
+// seat reports whether the profile is a Team or Enterprise seat.
+func (p profile) seat() bool {
+	v := strings.TrimSpace(string(p.SeatTier))
+	return v != "" && v != "null" && v != `""`
 }
 
 func (l Login) profile() (profile, error) {
@@ -79,7 +89,8 @@ func (l Login) credentials() (credentials, error) {
 	return c, nil
 }
 
-// AccountFromLogin makes a new account from a login; it starts in the pool.
+// AccountFromLogin makes a new account from a login. It starts in the
+// auto-switch pool unless it is a Team or Enterprise seat (PLAN D14).
 func AccountFromLogin(l Login, now time.Time) (Account, error) {
 	email, err := l.Email()
 	if err != nil {
@@ -94,7 +105,7 @@ func AccountFromLogin(l Login, now time.Time) (Account, error) {
 	if plan == "" {
 		plan = c.SubscriptionType
 	}
-	return Account{Email: email, OrgName: p.OrganizationName, Plan: plan, Login: l, InPool: true, CapturedAt: now}, nil
+	return Account{Email: email, OrgName: p.OrganizationName, Plan: plan, Login: l, InPool: !p.seat(), CapturedAt: now}, nil
 }
 
 func requiredString(v *string, name string) (string, error) {

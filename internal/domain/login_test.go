@@ -112,6 +112,30 @@ func TestAccountFromLogin(t *testing.T) {
 	}
 }
 
+// A seat in a Team or Enterprise organisation starts out of the auto-switch
+// pool (PLAN D14); oauthAccount.seatTier is null for an individual
+// subscription (seen on the maintainer's four accounts, 2026-11-09).
+func TestAccountFromLoginSeatStartsOutOfThePool(t *testing.T) {
+	cases := []struct {
+		name, seat string
+		inPool     bool
+	}{
+		{"no seatTier", ``, true},
+		{"seatTier null", `,"seatTier":null`, true},
+		{"seatTier empty", `,"seatTier":""`, true},
+		{"seat", `,"seatTier":"team_standard"`, false},
+		{"seat of any shape", `,"seatTier":{"tier":"enterprise"}`, false},
+	}
+	for _, c := range cases {
+		l := login("seat@example.com")
+		l.Profile = json.RawMessage(`{"emailAddress":"seat@example.com"` + c.seat + `}`)
+		a, err := domain.AccountFromLogin(l, t0)
+		if err != nil || a.InPool != c.inPool {
+			t.Errorf("%s: InPool = %v, %v; want %v", c.name, a.InPool, err, c.inPool)
+		}
+	}
+}
+
 func account(creds string) domain.Account {
 	return domain.Account{Email: "a@b.c", Login: domain.Login{Credentials: json.RawMessage(creds)}}
 }
