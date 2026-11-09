@@ -98,7 +98,7 @@ available again, on every automatic switch, and when an account's usage stops be
     ccswitch watch [--once]      poll until Ctrl-C (for a machine without the tray)
     ccswitch statusline          one line for Claude Code's status line
 
-`<email>` may be any unique beginning of the address: `ccswitch use ana.f`.
+`<email>` may be any unique beginning of the address: `ccswitch use ana`.
 
 ## What a switch does
 
@@ -149,5 +149,6 @@ also the Keychain item `ccswitch-accounts`). Claude Code keeps whichever account
 
 Go 1.26 + Wails v3, one core and three front ends that hold no logic. Design, facts and decisions:
 [PLAN.md](PLAN.md). Rules for contributors (and for Claude Code working on it): [CLAUDE.md](CLAUDE.md).
-The real-login checklist: [TRY-IT.md](TRY-IT.md). `task ci` runs what CI runs (format, vet, lint, tests with
+The real-login checklist: [TRY-IT.md](TRY-IT.md). `go run -ldflags "-H windowsgui" scripts/traydemo.go` runs
+the real tray on made-up accounts (no login, no network), for screenshots and UI work. `task ci` runs what CI runs (format, vet, lint, tests with
 coverage gates, architecture test, build) on Windows, macOS and Ubuntu; a `v*` tag publishes one zip per OS.

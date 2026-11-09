@@ -34,7 +34,7 @@ F3. Usage: `GET https://api.anthropic.com/api/oauth/usage` with `Authorization: 
 F4. Token refresh: `POST https://console.anthropic.com/v1/oauth/token`
     `{grant_type:"refresh_token", refresh_token, client_id:"9d1c250a-e61b-44d9-88ed-5944d1962f5e"}` →
     `{access_token, refresh_token, expires_in}`. Known from Claude Code's own flow, **not exercised here**
-    (doing so would rotate the maintainer's live token): V4.
+    (doing so would rotate the live token): V4.
 F5. `claude auth login [--email x]`, `claude auth logout`, `claude auth status --json` (fields: loggedIn,
     authMethod, email, orgId, orgName, subscriptionType, configDirectory) exist. `CLAUDE_CONFIG_DIR` moves the
     config folder, so a login in a scratch folder never touches the real one (V1 confirms both files land there).
@@ -42,7 +42,7 @@ F6. Version: `claude --version` → `2.1.300 (Claude Code)`. Latest: npm registr
     `https://registry.npmjs.org/@anthropic-ai/claude-code/latest` → `version` (also the native bucket's
     `…/claude-code-releases/latest`; both said 2.1.319). `claude update` installs it (native install, versions
     under `~/.local/share/claude/versions/`). Running sessions keep the old binary; new ones get the new.
-F7. the maintainer's tray stack is Go 1.26 + Wails v3.0.0, pure Go, no cgo (Fieldwork). Reused here.
+F7. The maintainer's tray stack is Go 1.26 + Wails v3.0.0, pure Go, no cgo (Fieldwork). Reused here.
 
 ## 3. Decisions
 
@@ -93,7 +93,7 @@ D12. **One writer at a time, no daemon, no IPC.** Tray and CLI both work on the 
     it watches the live login file's mtime every 10 s.
 D13. **Logging in to the same email twice** updates that account; the key is `emailAddress`.
 D14. **Terms**: switching between subscriptions to avoid limits may fall under Anthropic's usage rules; that
-    check is the maintainer's, and a Team/Enterprise seat goes out of the pool (D8) unless he decides otherwise.
+    check is the user's, and a Team/Enterprise seat goes out of the pool (D8) unless they decide otherwise.
 
 Alternatives rejected: Tauri/Electron (new stack, bigger binaries); `CLAUDE_CONFIG_DIR` per account (splits
 history and MCP logins); a details window in v1 (menu rows with bars carry the same facts; window is M2).
@@ -201,8 +201,8 @@ restored and error surfaced; unreadable usage → state red, no auto-switch; aut
 and posts the notification; undo; update success and failure; stale accounts excluded.
 
 End-to-end (scripted, on a test copy with `CCSWITCH_DATA_DIR` + `CCSWITCH_CLAUDE_DIR` pointing at a copy of
-`~/.claude` holding the maintainer's login): `ccswitch status` reads real usage; `ccswitch add` with his second
-account (he does the browser step); `ccswitch use <second>`; `claude auth status --json` in that config dir
+`~/.claude` holding the maintainer's login): `ccswitch status` reads real usage; `ccswitch add` with a second
+account (the owner does the browser step); `ccswitch use <second>`; `claude auth status --json` in that config dir
 shows the second email and its usage reads 200; `use <first>` again and the first still works (V2). Then the
 same from the tray on the test copy. Only after this does the real `~/.claude` get used.
 
@@ -240,16 +240,16 @@ Lanes: WP-1 alone first. Then WP-2 ∥ WP-3. Then WP-4 ∥ WP-5 ∥ WP-7. WP-6 l
 2026-11-09 10:30 — WP-1..5 and WP-7 built by six Opus lanes and merged (main aaca1b5): `task ci` green on
 Windows (domain 98 %, core 97 %, cli 97 %, tray model 99 %, adapters 87–100 %), bin/ccswitch.exe and
 bin/ccswitch-app.exe built. Run only against copies of the login so far: CLI `check` and the tray's first poll
-both read the real weekly usage and versions. WP-6 (TRY-IT.md: V1–V4, V6 with the maintainer's second account) is next;
+both read the real weekly usage and versions. WP-6 (TRY-IT.md: V1–V4, V6 with a second account) is next;
 V5 needs a Mac. Not pushed; no GitHub repo yet.
-2026-11-09 12:30 — WP-6 part done on the real login: `check` captured the Example Co seat (vault sealed, no
+2026-11-09 12:30 — WP-6 part done on the real login: `check` captured the work account (vault sealed, no
 token in state/log, `.credentials.json` untouched); the tray ran on it (docs/tray-menu.png); "Update now"
 installed Claude Code 2.1.319 (V6). A read that starts failing now sends one notification "Usage unreadable".
 Pushed to github.com/diegofal/ccswitch (private); first CI run: macOS and Windows green, ubuntu needed GTK 4 /
-WebKitGTK 6.0 packages (Wails v3 default) — fixed. Left: V1–V4 with the maintainer's second account (TRY-IT.md steps
+WebKitGTK 6.0 packages (Wails v3 default) — fixed. Left: V1–V4 with a second account (TRY-IT.md steps
 2–4), V5 on a Mac.
-2026-11-09 13:30 — the maintainer added home@example.net, dev@example.org and seat@example.com
-(V1 passed; V2 passed: A→B→A within 15 s, both tokens still read usage). The Example account showed
+2026-11-09 13:30 — three more accounts added
+(V1 passed; V2 passed: A→B→A within 15 s, both tokens still read usage). One account showed
 "unreadable: limits[0]: no resets_at": the endpoint returns the session row with `resets_at: null` (0 %, not
 active) while no 5-hour window is open. Fixed: a null reset is a limit without a window (shown "—", alert key
 "none", never pruned); fixture usage-session-null-reset.json; scripts/usageraw.go prints an account's raw
@@ -257,11 +257,11 @@ response (no secret) for the next shape surprise. Left: V3, V5.
 2026-11-09 19:55 — Tray: a coloured dot per account and ring per limit, "resets in 1d 5h · Tue 01:00", the
 others soonest usable first (CLI too), version row "up to date (checked HH:MM)". README rewritten as a
 getting-started guide for the team. **Gap found:** D14's "a Team/Enterprise seat goes out of the pool" is not
-implemented: every captured account gets `InPool: true`, the Example Co seat included, and no field read so far
+implemented: every captured account gets `InPool: true`, the work account included, and no field read so far
 tells a work seat (it reports plan "Ultra" like the personal ones). Until a fact says how to tell, the README
 says every account starts in the pool and `ccswitch pool <email> off` keeps one out. Left: V3, V4, V5.
 2026-11-09 20:15 — D14 done: `oauthAccount.seatTier` exists and is null on all four of the maintainer's accounts, which
 are individual subscriptions (`billingType: stripe_subscription`, the default "<email>'s Organization", role
-admin), the Example Co login included. A new account with any non-null `seatTier` starts out of the pool. The
+admin), the work account included. A new account with any non-null `seatTier` starts out of the pool. The
 value a real Team seat carries has not been seen; a wrong positive only leaves an account out until
 `pool on`. Accounts already stored are not changed.

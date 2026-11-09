@@ -114,7 +114,7 @@ func TestAccountFromLogin(t *testing.T) {
 
 // A seat in a Team or Enterprise organisation starts out of the auto-switch
 // pool (PLAN D14); oauthAccount.seatTier is null for an individual
-// subscription (seen on the maintainer's four accounts, 2026-11-09).
+// subscription (seen on four individual accounts, 2026-11-09).
 func TestAccountFromLoginSeatStartsOutOfThePool(t *testing.T) {
 	cases := []struct {
 		name, seat string

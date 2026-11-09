@@ -10,7 +10,7 @@ Before you start: `claude auth status --json` should show the account you expect
 This is the maintainer's checklist for the facts PLAN §6 could not settle from the desk; a new user wants
 the [README](README.md) instead.
 
-**Done on 2026-11-09 on the real login:** steps 1, 2, 3, 5 and 6 (`check` captured the Example Co seat; three
+**Done on 2026-11-09 on the real login:** steps 1, 2, 3, 5 and 6 (`check` captured the work account; three
 more accounts added (V1); A→B→A kept both tokens working (V2); the tray —
 [docs/tray-menu.png](docs/tray-menu.png); "Update now" installed 2.1.319 (V6)). **Left:** step 4 (V3, does an
 open session follow a switch), V4 (an inactive account's token refresh, first due about 12 h after it was

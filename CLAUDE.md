@@ -18,7 +18,7 @@ test, and the build. Run the full Go suite before every commit.
 1. **Never touch the real `~/.claude` or the real vault from tests or test copies.** Every binary honours
    `CCSWITCH_DATA_DIR`, `CCSWITCH_CLAUDE_DIR`, `CCSWITCH_CLAUDE_BIN`; tests set them to temp folders; the
    arch test fails any `os.UserHomeDir` outside `internal/adapters/paths`. A real-login end-to-end run works
-   on a *copy* of `~/.claude` and only with the maintainer watching.
+   on a *copy* of `~/.claude` and only with the account owner watching.
 2. **Secrets never leave the machine or reach a log.** Access and refresh tokens are not logged, not printed
    by the CLI, not in test fixtures. Fixtures use `usage-max20x.json` (no secrets) and made-up tokens.
 3. **Only `claudeAiOauth`, `organizationUuid` and `oauthAccount` are ever written to Claude Code's files.**
@@ -26,6 +26,10 @@ test, and the build. Run the full Go suite before every commit.
 4. **ccswitch never refreshes the active account's token** (PLAN D2).
 5. **A failed read is shown, never hidden.** No stale number displayed as current, no empty catch.
 6. Red first: write the failing test, then the code. Front ends (tray, CLI, statusline) hold no logic.
+7. **No real information in the repo, ever.** No real email, name, company or account in code, tests,
+   fixtures, docs, commit messages or screenshots: use made-up `example.com` / `example.org` / `example.net`
+   accounts (RFC 2606). Screenshots come from `go run -ldflags "-H windowsgui" scripts/traydemo.go`, the real
+   tray on made-up accounts (testkit fakes, no network), never from a real login.
 
 ## Code rules (same as Fieldwork)
 
