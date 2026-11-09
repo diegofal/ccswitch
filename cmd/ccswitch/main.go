@@ -16,7 +16,7 @@ import (
 	"github.com/diegofal/ccswitch/internal/adapters/claudecli"
 	"github.com/diegofal/ccswitch/internal/adapters/lock"
 	"github.com/diegofal/ccswitch/internal/adapters/logfile"
-	"github.com/diegofal/ccswitch/internal/adapters/loginfile"
+	"github.com/diegofal/ccswitch/internal/adapters/login"
 	"github.com/diegofal/ccswitch/internal/adapters/notify"
 	"github.com/diegofal/ccswitch/internal/adapters/npmreg"
 	"github.com/diegofal/ccswitch/internal/adapters/paths"
@@ -74,7 +74,7 @@ func wire() (cli.Deps, *logfile.File, error) {
 	log := logfile.New(dataDir)
 	desktop := notify.New()
 	sw := core.New(core.Deps{
-		Login:    loginfile.New(filepath.Join(claudeDir, ".credentials.json"), paths.ClaudeConfigFileBeside(claudeDir)),
+		Login:    login.Open(claudeDir, paths.ClaudeConfigFileBeside(claudeDir)),
 		Vault:    v,
 		Usage:    usageapi.New(version, clock{}),
 		Claude:   claudecli.New(),
@@ -91,7 +91,7 @@ func wire() (cli.Deps, *logfile.File, error) {
 			return os.MkdirTemp(dataDir, "login-")
 		},
 		LoginStoreAt: func(dir string) ports.LoginStore {
-			return loginfile.New(filepath.Join(dir, ".credentials.json"), paths.ClaudeConfigFile(dir))
+			return login.Open(dir, paths.ClaudeConfigFile(dir))
 		},
 	})
 	return cli.Deps{Switcher: sw, Clock: clock{}, Store: store, Notify: desktop, Version: version}, log, nil
