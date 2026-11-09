@@ -1,0 +1,46 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - unparam
+    - dupl
+    - gocyclo
+    - gocritic
+    - misspell
+    - depguard
+    - nolintlint
+  settings:
+    gocyclo:
+      min-complexity: 15
+    dupl:
+      threshold: 150
+    depguard:
+      rules:
+        no-mocking-frameworks:
+          deny:
+            - pkg: github.com/stretchr/testify/mock
+              desc: "use the hand-written fakes in internal/testkit"
+            - pkg: github.com/golang/mock
+              desc: "use the hand-written fakes in internal/testkit"
+            - pkg: go.uber.org/mock
+              desc: "use the hand-written fakes in internal/testkit"
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [dupl, gocyclo, unparam]
+
+formatters:
+  enable:
+    - gofmt

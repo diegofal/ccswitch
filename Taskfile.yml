@@ -1,0 +1,55 @@
+version: "3"
+
+# Dev needs Go 1.26 first on PATH (see CLAUDE.md). `task ci` is what CI runs.
+
+vars:
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+
+tasks:
+  fmt:
+    desc: Format Go code
+    cmds: [gofmt -w cmd internal scripts]
+
+  fmt-check:
+    desc: Fail if any Go file is not gofmt'ed
+    cmds: [go run scripts/fmtcheck.go cmd internal]
+
+  vet:
+    cmds: [go vet ./...]
+
+  lint:
+    desc: golangci-lint with the repo config
+    cmds: [golangci-lint run --allow-parallel-runners ./...]
+
+  test:
+    desc: All Go tests with coverage (tests never touch ~/.claude; see CLAUDE.md rule 1)
+    cmds: [go test -count=1 -coverprofile=coverage.out ./...]
+
+  cover:
+    desc: Per-package coverage gates (90% domain, 85% core and adapters)
+    deps: [test]
+    cmds: [go run scripts/covergate.go coverage.out]
+
+  arch:
+    desc: Import rules (internal/arch_test.go)
+    cmds: [go test -count=1 -run Architecture ./internal]
+
+  build:
+    desc: Build bin/ccswitch (CLI) and bin/ccswitch-app (tray, no console window on Windows)
+    cmds:
+      - go build -trimpath -ldflags "-X main.version={{.VERSION}}" -o bin/ccswitch{{exeExt}} ./cmd/ccswitch
+      - cmd: go build -trimpath -ldflags "-H windowsgui -X main.version={{.VERSION}}" -o bin/ccswitch-app.exe ./cmd/ccswitch-app
+        platforms: [windows]
+      - cmd: go build -trimpath -ldflags "-X main.version={{.VERSION}}" -o bin/ccswitch-app ./cmd/ccswitch-app
+        platforms: [darwin, linux]
+
+  ci:
+    desc: Everything CI runs, locally
+    cmds:
+      - task: fmt-check
+      - task: vet
+      - task: lint
+      - task: cover
+      - task: arch
+      - task: build
